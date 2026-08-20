@@ -1,0 +1,45 @@
+{
+  "name": "dj-sync-agent",
+  "version": "0.9.4",
+  "private": true,
+  "description": "Local sync agent for DJ Copilot / Rekordbox.",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "inspect": "tsx src/main.ts inspect",
+    "analyze": "tsx src/main.ts analyze",
+    "inspect:tracks": "tsx src/main.ts inspect:tracks",
+    "verify:relationships": "tsx src/main.ts verify:relationships",
+    "extract:sample": "tsx src/main.ts extract:sample",
+    "snapshot:sample": "tsx src/main.ts snapshot:sample",
+    "inspect:change-state": "tsx src/main.ts inspect:change-state",
+    "scan:changes": "tsx src/main.ts scan:changes",
+    "sync:batch": "tsx src/main.ts sync:batch",
+    "verify:pagination": "tsx src/main.ts verify:pagination",
+    "sync:envelope": "tsx src/main.ts sync:envelope",
+    "sync:push": "tsx src/main.ts sync:push",
+    "sync:serve": "tsx src/main.ts sync:serve",
+    "sync:run": "tsx src/main.ts sync:run",
+    "sync:watch": "tsx src/sync/sync-watch-cli.ts",
+    "sync:status": "tsx src/sync/status-cli.ts",
+    "validate:envelope": "tsx src/validate-envelope.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@journeyapps/sqlcipher": "^6.0.0",
+    "chokidar": "^5.0.0",
+    "pino": "^9.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "supabase": "2.115.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.3"
+  }
+}

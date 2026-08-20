@@ -1,0 +1,8 @@
+[functions.sync-batch]
+verify_jwt = false
+
+[functions.sync-health]
+verify_jwt = false
+
+[functions.sync-snapshot]
+verify_jwt = false

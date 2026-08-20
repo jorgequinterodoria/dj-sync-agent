@@ -1,0 +1,54 @@
+# Secrets / local configuration
+.env
+.env.*
+!.env.example
+*.local
+*.secret
+*.key
+*.pem
+
+# macOS
+.DS_Store
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Runtime state / generated reports
+reports/*.json
+reports/*.ndjson
+reports/*.lock/
+reports/rekordbox-*.json
+reports/rekordbox-*.ndjson
+
+# Logs
+*.log
+logs/
+
+# Local Supabase overrides
+supabase/.env.local
+supabase/functions/.env
+supabase/functions/.env.*
+
+# Editor / OS
+.vscode/
+.idea/
+
+# Local runtime state / generated data
+reports/
+*.log
+.DS_Store
+
+# Local secrets
+.env
+.env.*
+!.env.example
+*.secret
+*.key
+*.pem
+
+# Local service configuration
+.docker/
+
+# Supabase CLI local state
+supabase/.temp/
