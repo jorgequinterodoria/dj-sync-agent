@@ -1,0 +1,2 @@
+[functions.sync-event-dispatcher]
+verify_jwt = false

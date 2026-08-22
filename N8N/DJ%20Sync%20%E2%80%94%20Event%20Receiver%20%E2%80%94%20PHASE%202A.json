@@ -1,0 +1,1438 @@
+{
+  "name": "DJ Sync — Event Receiver — Phase 2A",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dj-sync",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        496
+      ],
+      "id": "c15863a3-f32c-47ce-8d29-7d97df20ffa1",
+      "name": "Webhook",
+      "webhookId": "231b00d7-4552-4fa3-9a56-8a54b0fa9c12",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "JX69E9OM5NPEdzFw",
+          "name": "DJ Sync Dispatcher Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"accepted\": true,\n  \"duplicate\": true,\n  \"eventId\": \"{{ $('Webhook').item.json.body.eventId }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        1024
+      ],
+      "id": "823813e2-a950-44a2-816d-a8b5c5788c56",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select\n  $1::text as device_id,\n  $2::text as track_id,\n  coalesce(\n    (\n      select track_uuid\n      from public.sync_tracks\n      where device_id = $1\n        and track_id = $2\n      order by updated_at desc\n      limit 1\n    ),\n    null\n  ) as track_uuid,\n  coalesce(\n    (\n      select track_hash\n      from public.sync_tracks\n      where device_id = $1\n        and track_id = $2\n      order by updated_at desc\n      limit 1\n    ),\n    $4::text\n  ) as track_hash,\n  $3::bigint as rb_local_usn,\n  coalesce(\n    (\n      select updated_at\n      from public.sync_tracks\n      where device_id = $1\n        and track_id = $2\n      order by updated_at desc\n      limit 1\n    ),\n    now()\n  ) as updated_at,\n  (\n    select track\n    from public.sync_tracks\n    where device_id = $1\n      and track_id = $2\n    order by updated_at desc\n    limit 1\n  ) as track,\n  exists (\n    select 1\n    from public.sync_tracks\n    where device_id = $1\n      and track_id = $2\n  ) as track_found;",
+        "options": {
+          "queryReplacement": "={{ $('Webhook').item.json.body.deviceId }},{{ $('Webhook').item.json.body.data.trackId }},{{ $('Webhook').item.json.body.cursor.rbLocalUsn }},{{ $('Webhook').item.json.body.data.trackHash }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1088,
+        400
+      ],
+      "id": "db0734b3-c216-4955-9487-619bca7e2d1f",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "93e7ffed-8861-4c26-bf49-39096784afae",
+                    "leftValue": "={{ $('Webhook').item.json.body.eventType }}",
+                    "rightValue": "track.updated",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "track.updated"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3528be7e-38ce-423f-84e4-bf952ab748f3",
+                    "leftValue": "={{ $('Webhook').item.json.body.eventType }}",
+                    "rightValue": "track.added",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "track.added"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7e533f16-a722-47c0-9ba0-7d1b9637e360",
+                    "leftValue": "={{ $('Webhook').item.json.body.eventType }}",
+                    "rightValue": "track.deleted",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "track.deleted"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "558670a3-5e0f-4bc7-8296-05ddf6e15c09",
+                    "leftValue": "={{ $('Webhook').item.json.body.eventType }}",
+                    "rightValue": "track.updated",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals",
+                      "name": "filter.operator.notEquals"
+                    }
+                  },
+                  {
+                    "id": "13c377af-8e0d-41fd-9934-574c02513c9c",
+                    "leftValue": "={{ $('Webhook').item.json.body.eventType }}",
+                    "rightValue": "track.added",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals",
+                      "name": "filter.operator.notEquals"
+                    }
+                  },
+                  {
+                    "id": "52b8c01b-8302-4f4c-8867-d4f5fae3b54c",
+                    "leftValue": "={{ $('Webhook').item.json.body.eventType }}",
+                    "rightValue": "track.deleted",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals",
+                      "name": "filter.operator.notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "unsupported"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        464
+      ],
+      "id": "84c01962-cd56-4f48-8249-e9c163e1851a",
+      "name": "Route Track Event Type"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "288feae4-5173-491b-bd4a-d01069c16bd5",
+              "name": "eventId",
+              "value": "={{ $('Webhook').item.json.body.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "0caf4975-e2f7-4f15-bb64-5211bbb9fe31",
+              "name": "eventType",
+              "value": "={{ $('Webhook').item.json.body.eventType }}",
+              "type": "string"
+            },
+            {
+              "id": "afdd4901-375a-43ab-b8df-33b697e136d3",
+              "name": "deviceId",
+              "value": "={{ $('Webhook').item.json.body.deviceId }}",
+              "type": "string"
+            },
+            {
+              "id": "2dd9a9c5-3abd-48d4-9cf3-28c485a089e1",
+              "name": "trackId",
+              "value": "={{ $json.track_id }}",
+              "type": "string"
+            },
+            {
+              "id": "d14900e6-da85-4f11-a01b-9166b1073815",
+              "name": "trackUuid",
+              "value": "={{ $json.track_uuid }}",
+              "type": "string"
+            },
+            {
+              "id": "25a08bc7-3f47-48e1-a541-c346ecfa4f8c",
+              "name": "trackHash",
+              "value": "={{ $json.track_hash }}",
+              "type": "string"
+            },
+            {
+              "id": "364a171a-8755-4d76-a116-7ba6c02111c9",
+              "name": "rbLocalUsn",
+              "value": "={{ $json.rb_local_usn }}",
+              "type": "string"
+            },
+            {
+              "id": "23e4c766-71b8-41f0-89dc-25834da84e76",
+              "name": "updatedAt",
+              "value": "={{ $json.updated_at }}",
+              "type": "string"
+            },
+            {
+              "id": "124c7290-c1fe-4474-b16e-e302033c5c8c",
+              "name": "track",
+              "value": "={{ $json.track }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        224
+      ],
+      "id": "ba3cc81c-0833-4fb0-a39d-38c8925d8728",
+      "name": "Normalize Track Event"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with existing as (\n  select\n    event_id,\n    status,\n    attempts,\n    updated_at\n  from public.n8n_event_receipts\n  where event_id = $1::uuid\n  for update\n),\nclaimed as (\n  insert into public.n8n_event_receipts (\n    event_id,\n    event_type,\n    device_id,\n    status,\n    attempts,\n    received_at,\n    updated_at,\n    last_error\n  )\n  select\n    $1::uuid,\n    $2,\n    $3,\n    'processing',\n    1,\n    now(),\n    now(),\n    null\n  where not exists (\n    select 1\n    from existing\n  )\n  returning\n    event_id,\n    1 as attempts\n),\nreclaimed as (\n  update public.n8n_event_receipts r\n  set\n    status = 'processing',\n    attempts = r.attempts + 1,\n    updated_at = now(),\n    last_error = null,\n    processed_at = null\n  where r.event_id = $1::uuid\n    and r.status in ('processing', 'failed')\n    and r.updated_at < now() - interval '10 minutes'\n  returning\n    r.event_id,\n    r.attempts\n),\ncandidate as (\n  select\n    event_id,\n    attempts\n  from claimed\n\n  union all\n\n  select\n    event_id,\n    attempts\n  from reclaimed\n),\ndecision as (\n  select\n    c.event_id,\n    c.attempts,\n    case\n      when exists (\n        select 1\n        from public.sync_changes sc\n        where sc.device_id = $3\n          and sc.track_id = $4\n          and sc.rb_local_usn > $5::bigint\n      )\n        then 'superseded'\n\n      when c.attempts = 1\n        then 'process'\n\n      else\n        'retry'\n    end as action\n  from candidate c\n)\nselect action\nfrom decision\n\nunion all\n\nselect 'duplicate'::text\nwhere not exists (\n  select 1\n  from candidate\n);",
+        "options": {
+          "queryReplacement": "={{ $('Webhook').item.json.body.eventId }},{{ $('Webhook').item.json.body.eventType }},{{ $('Webhook').item.json.body.deviceId }},{{ $('Webhook').item.json.body.data.trackId }},{{ $('Webhook').item.json.body.cursor.rbLocalUsn }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        432,
+        496
+      ],
+      "id": "71f792e4-79fb-441a-a5bb-07ab1e8e6c81",
+      "name": "Postgres — Claim Event",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "process",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ac873d25-b999-454b-a5cc-c436c4c2b0f8"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "process"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c3256f84-9884-4475-afdc-632634f1cc16",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "retry",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "retry"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "98dc960a-b4ef-4bff-895c-fa529147c863",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "superseded",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "superseded"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "08422a0e-5128-4e18-91c1-8632c45b7b05",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "duplicate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "duplicate"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        480
+      ],
+      "id": "48fafe49-85ed-4431-8711-5e36df5a4b7e",
+      "name": "Route Event Action"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "update public.n8n_event_receipts\nset\n  status = 'processed',\n  processed_at = now(),\n  updated_at = now(),\n  last_error = null\nwhere event_id = $1::uuid\n  and status = 'processing'\nreturning\n  event_id,\n  status,\n  attempts,\n  processed_at;",
+        "options": {
+          "queryReplacement": "={{ $('Webhook').item.json.body.eventId }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2544,
+        400
+      ],
+      "id": "8b911784-4b8a-4676-b734-99e61b8de169",
+      "name": "Postgres — Mark Event Processed",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"accepted\": true,\n  \"duplicate\": false,\n  \"processed\": true,\n  \"eventId\": \"{{ $('Webhook').item.json.body.eventId }}\",\n  \"eventType\": \"{{ $('Webhook').item.json.body.eventType }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2752,
+        400
+      ],
+      "id": "6f9b7866-b3bd-4a75-8313-8468b1a07848",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "58517520-a6d5-4056-8a30-b4dae372dbba",
+              "name": "eventId",
+              "value": "={{ $json.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "4df25e9e-7f44-4be8-a476-3425d8938c20",
+              "name": "eventType",
+              "value": "={{ $json.eventType }}",
+              "type": "string"
+            },
+            {
+              "id": "bed16f6b-0490-4509-90cf-3b8d3778c1fb",
+              "name": "deviceId",
+              "value": "={{ $json.deviceId }}",
+              "type": "string"
+            },
+            {
+              "id": "d6ebc315-3c00-4df3-b6c6-45905272a86f",
+              "name": "trackId",
+              "value": "={{ $json.trackId }}",
+              "type": "string"
+            },
+            {
+              "id": "f49240db-6c61-41bb-8609-889dbf3bb31a",
+              "name": "trackUuid",
+              "value": "={{ $json.trackUuid }}",
+              "type": "string"
+            },
+            {
+              "id": "ff82dacd-00ad-40fc-ae05-f5351f801020",
+              "name": "trackHash",
+              "value": "={{ $json.trackHash }}",
+              "type": "string"
+            },
+            {
+              "id": "f303ea30-b79a-4f1d-8df0-802409e0ee33",
+              "name": "rbLocalUsn",
+              "value": "={{ $json.rbLocalUsn }}",
+              "type": "number"
+            },
+            {
+              "id": "8a337ba9-5624-4ecc-99cf-7165b7667f30",
+              "name": "title",
+              "value": "={{ $json.track.metadata.title }}",
+              "type": "string"
+            },
+            {
+              "id": "d812b68c-0e7d-439e-8104-1c920eef7a1c",
+              "name": "artist",
+              "value": "={{ $json.track.metadata.artist }}",
+              "type": "string"
+            },
+            {
+              "id": "5b75da0f-2851-48b7-99a4-6ea393885958",
+              "name": "album",
+              "value": "={{ $json.track.metadata.album }}",
+              "type": "string"
+            },
+            {
+              "id": "0f5a82bd-ec85-42eb-bdfa-2e6887ee6fec",
+              "name": "genre",
+              "value": "={{ $json.track.metadata.genre }}",
+              "type": "string"
+            },
+            {
+              "id": "c4bf2830-73d1-46a2-9b4f-dc987903cc99",
+              "name": "key",
+              "value": "={{ $json.track.metadata.key }}",
+              "type": "string"
+            },
+            {
+              "id": "7d7a74e1-81f8-48d2-b3a1-191952ccf758",
+              "name": "remixer",
+              "value": "={{ $json.track.metadata.remixer }}",
+              "type": "string"
+            },
+            {
+              "id": "9361dc51-04aa-4f06-a85a-2a110a7418f6",
+              "name": "bpm",
+              "value": "={{ $json.track.technical.bpm }}",
+              "type": "number"
+            },
+            {
+              "id": "fc4e8e56-30a1-44d9-ac57-98bec410ef7e",
+              "name": "rating",
+              "value": "={{ $json.track.technical.rating }}",
+              "type": "number"
+            },
+            {
+              "id": "33604c9d-44be-4664-8b77-63e3aca405af",
+              "name": "lengthSeconds",
+              "value": "={{ $json.track.technical.lengthSeconds }}",
+              "type": "number"
+            },
+            {
+              "id": "6c774c0f-aadf-4ed5-8cdb-96ab6ec18b50",
+              "name": "bitrate",
+              "value": "={{ $json.track.technical.bitrate }}",
+              "type": "number"
+            },
+            {
+              "id": "853043e7-82df-4343-8b56-86fd7f569377",
+              "name": "sampleRate",
+              "value": "={{ $json.track.technical.sampleRate }}",
+              "type": "number"
+            },
+            {
+              "id": "671e0a7b-444e-4d49-95a0-d1d2173986f2",
+              "name": "playCount",
+              "value": "={{ $json.track.technical.playCount }}",
+              "type": "number"
+            },
+            {
+              "id": "e164a91f-a5b5-4047-8dc1-8814db651a9d",
+              "name": "updatedAt",
+              "value": "={{ $json.updatedAt }}",
+              "type": "string"
+            },
+            {
+              "id": "578a9f8c-bae8-4f5f-862c-a91edf193b0e",
+              "name": "track",
+              "value": "={{ $json.track }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1504,
+        224
+      ],
+      "id": "914f185e-7eed-403e-8f83-a4f930e68603",
+      "name": "Track Summary"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into public.n8n_track_event_audit (\n  event_id,\n  event_type,\n  device_id,\n  track_id,\n  track_uuid,\n  track_hash,\n  rb_local_usn,\n  title,\n  artist,\n  album,\n  genre,\n  key,\n  remixer,\n  bpm,\n  rating,\n  length_seconds,\n  bitrate,\n  sample_rate,\n  play_count,\n  processed_at\n)\nvalues (\n  $1::uuid,\n  $2,\n  $3,\n  $4,\n  $5,\n  $6,\n  nullif($7, 'null')::bigint,\n  nullif($8, 'null'),\n  nullif($9, 'null'),\n  nullif($10, 'null'),\n  nullif($11, 'null'),\n  nullif($12, 'null'),\n  nullif($13, 'null'),\n  nullif($14, 'null')::numeric,\n  nullif($15, 'null')::integer,\n  nullif($16, 'null')::integer,\n  nullif($17, 'null')::integer,\n  nullif($18, 'null')::integer,\n  nullif($19, 'null')::integer,\n  now()\n)\non conflict (event_id) do nothing\nreturning\n  id,\n  event_id,\n  event_type,\n  device_id,\n  track_id,\n  track_uuid,\n  track_hash,\n  rb_local_usn,\n  title,\n  artist,\n  album,\n  genre,\n  key,\n  remixer,\n  bpm,\n  rating,\n  length_seconds,\n  bitrate,\n  sample_rate,\n  play_count,\n  processed_at,\n  created_at;",
+        "options": {
+          "queryReplacement": "={{ $json.eventId }},{{ $json.eventType }},{{ $json.deviceId }},{{ $json.trackId }},{{ $json.trackUuid }},{{ $json.trackHash }},{{ $json.rbLocalUsn }},{{ $json.title }},{{ $json.artist }},{{ $json.album }},{{ $json.genre }},{{ $json.key }},{{ $json.remixer }},{{ $json.bpm }},{{ $json.rating }},{{ $json.lengthSeconds }},{{ $json.bitrate }},{{ $json.sampleRate }},{{ $json.playCount }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2048,
+        400
+      ],
+      "id": "c780d365-53db-4286-982d-542d64a1b3b2",
+      "name": "Save Track Audit",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select\n  (\n    select event_id\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_event_id,\n  (\n    select title\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_title,\n  (\n    select artist\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_artist,\n  (\n    select album\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_album,\n  (\n    select genre\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_genre,\n  (\n    select key\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_key,\n  (\n    select remixer\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_remixer,\n  (\n    select bpm\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_bpm,\n  (\n    select rating\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_rating,\n  (\n    select length_seconds\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_length_seconds,\n  (\n    select bitrate\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_bitrate,\n  (\n    select sample_rate\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_sample_rate,\n  (\n    select play_count\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_play_count,\n  (\n    select rb_local_usn\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_rb_local_usn,\n  (\n    select track_hash\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n      and event_id <> $3::uuid\n    order by created_at desc\n    limit 1\n  ) as previous_track_hash;",
+        "options": {
+          "queryReplacement": "={{ $('Track Summary').item.json.deviceId }},{{ $('Track Summary').item.json.trackId }},{{ $('Track Summary').item.json.eventId }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1664,
+        224
+      ],
+      "id": "606b9ef4-a9c0-47b6-930f-956d5ddd0e04",
+      "name": "Get Previous Track Audit",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Detect Track Changes\n *\n * Flujo esperado:\n *\n * Track Summary\n *   ↓\n * Get Previous Track Audit\n *   ↓\n * Detect Track Changes\n *   ↓\n * Save Track Audit\n *   ↓\n * Mark Event Processed\n *   ↓\n * Respond\n *\n * El nodo compara el estado ACTUAL de la pista contra\n * la ÚLTIMA versión auditada ANTERIOR.\n */\n\n// ------------------------------------------------------------\n// INPUTS\n// ------------------------------------------------------------\n\nconst current = $('Track Summary').item.json;\nconst previous = $json ?? {};\n\n// ------------------------------------------------------------\n// NORMALIZACIÓN\n// ------------------------------------------------------------\n\nfunction normalizeNullable(value) {\n  if (\n    value === null ||\n    value === undefined\n  ) {\n    return null;\n  }\n\n  if (\n    typeof value === 'string' &&\n    value.trim().toLowerCase() === 'null'\n  ) {\n    return null;\n  }\n\n  return value;\n}\n\nfunction normalizeNumber(value) {\n  const normalized = normalizeNullable(value);\n\n  if (normalized === null) {\n    return null;\n  }\n\n  const number = Number(normalized);\n\n  return Number.isFinite(number)\n    ? number\n    : null;\n}\n\nfunction normalizeString(value) {\n  const normalized = normalizeNullable(value);\n\n  if (normalized === null) {\n    return null;\n  }\n\n  return String(normalized);\n}\n\n// ------------------------------------------------------------\n// COMPARACIÓN\n// ------------------------------------------------------------\n\nfunction sameValue(a, b) {\n  const left = normalizeNullable(a);\n  const right = normalizeNullable(b);\n\n  // Ambos vacíos\n  if (\n    left === null &&\n    right === null\n  ) {\n    return true;\n  }\n\n  // Si uno es null y el otro no\n  if (\n    left === null ||\n    right === null\n  ) {\n    return false;\n  }\n\n  // Comparación numérica\n  if (\n    typeof left === 'number' ||\n    typeof right === 'number'\n  ) {\n    const leftNumber =\n      normalizeNumber(left);\n\n    const rightNumber =\n      normalizeNumber(right);\n\n    if (\n      leftNumber === null &&\n      rightNumber === null\n    ) {\n      return true;\n    }\n\n    if (\n      leftNumber === null ||\n      rightNumber === null\n    ) {\n      return false;\n    }\n\n    return (\n      leftNumber === rightNumber\n    );\n  }\n\n  // Comparación de strings/valores simples\n  return (\n    String(left) === String(right)\n  );\n}\n\nfunction hasChanged(\n  currentValue,\n  previousValue,\n) {\n  return !sameValue(\n    currentValue,\n    previousValue,\n  );\n}\n\n// ------------------------------------------------------------\n// EXISTENCIA DE ESTADO ANTERIOR\n// ------------------------------------------------------------\n\nconst hasPrevious =\n  Boolean(\n    normalizeNullable(\n      previous.previous_event_id,\n    ),\n  );\n\n// ------------------------------------------------------------\n// ESTADO ANTERIOR NORMALIZADO\n// ------------------------------------------------------------\n\nconst previousState = {\n  eventId:\n    normalizeString(\n      previous.previous_event_id,\n    ),\n\n  title:\n    normalizeString(\n      previous.previous_title,\n    ),\n\n  artist:\n    normalizeNullable(\n      previous.previous_artist,\n    ),\n\n  album:\n    normalizeNullable(\n      previous.previous_album,\n    ),\n\n  genre:\n    normalizeNullable(\n      previous.previous_genre,\n    ),\n\n  key:\n    normalizeNullable(\n      previous.previous_key,\n    ),\n\n  remixer:\n    normalizeNullable(\n      previous.previous_remixer,\n    ),\n\n  bpm:\n    normalizeNumber(\n      previous.previous_bpm,\n    ),\n\n  rating:\n    normalizeNumber(\n      previous.previous_rating,\n    ),\n\n  lengthSeconds:\n    normalizeNumber(\n      previous.previous_length_seconds,\n    ),\n\n  bitrate:\n    normalizeNumber(\n      previous.previous_bitrate,\n    ),\n\n  sampleRate:\n    normalizeNumber(\n      previous.previous_sample_rate,\n    ),\n\n  playCount:\n    normalizeNumber(\n      previous.previous_play_count,\n    ),\n\n  rbLocalUsn:\n    normalizeNumber(\n      previous.previous_rb_local_usn,\n    ),\n\n  trackHash:\n    normalizeString(\n      previous.previous_track_hash,\n    ),\n};\n\n// ------------------------------------------------------------\n// ESTADO ACTUAL NORMALIZADO\n// ------------------------------------------------------------\n\nconst currentState = {\n  title:\n    normalizeString(\n      current.title,\n    ),\n\n  artist:\n    normalizeNullable(\n      current.artist,\n    ),\n\n  album:\n    normalizeNullable(\n      current.album,\n    ),\n\n  genre:\n    normalizeNullable(\n      current.genre,\n    ),\n\n  key:\n    normalizeNullable(\n      current.key,\n    ),\n\n  remixer:\n    normalizeNullable(\n      current.remixer,\n    ),\n\n  bpm:\n    normalizeNumber(\n      current.bpm,\n    ),\n\n  rating:\n    normalizeNumber(\n      current.rating,\n    ),\n\n  lengthSeconds:\n    normalizeNumber(\n      current.lengthSeconds,\n    ),\n\n  bitrate:\n    normalizeNumber(\n      current.bitrate,\n    ),\n\n  sampleRate:\n    normalizeNumber(\n      current.sampleRate,\n    ),\n\n  playCount:\n    normalizeNumber(\n      current.playCount,\n    ),\n\n  rbLocalUsn:\n    normalizeNumber(\n      current.rbLocalUsn,\n    ),\n\n  trackHash:\n    normalizeString(\n      current.trackHash,\n    ),\n};\n\n// ------------------------------------------------------------\n// DETECCIÓN DE CAMBIOS\n//\n// Si no hay snapshot anterior:\n//   todos los cambios de negocio = false\n//\n// No podemos afirmar que algo \"cambió\" sin\n// una versión anterior contra la cual comparar.\n// ------------------------------------------------------------\n\nconst changes = {\n  titleChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.title,\n          previousState.title,\n        )\n      : false,\n\n  artistChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.artist,\n          previousState.artist,\n        )\n      : false,\n\n  albumChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.album,\n          previousState.album,\n        )\n      : false,\n\n  genreChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.genre,\n          previousState.genre,\n        )\n      : false,\n\n  keyChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.key,\n          previousState.key,\n        )\n      : false,\n\n  remixerChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.remixer,\n          previousState.remixer,\n        )\n      : false,\n\n  bpmChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.bpm,\n          previousState.bpm,\n        )\n      : false,\n\n  ratingChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.rating,\n          previousState.rating,\n        )\n      : false,\n\n  lengthChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.lengthSeconds,\n          previousState.lengthSeconds,\n        )\n      : false,\n\n  bitrateChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.bitrate,\n          previousState.bitrate,\n        )\n      : false,\n\n  sampleRateChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.sampleRate,\n          previousState.sampleRate,\n        )\n      : false,\n\n  playCountChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.playCount,\n          previousState.playCount,\n        )\n      : false,\n\n  // Cambio técnico; NO se considera cambio de negocio.\n  trackHashChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.trackHash,\n          previousState.trackHash,\n        )\n      : false,\n\n  // También queda disponible para diagnóstico.\n  rbLocalUsnChanged:\n    hasPrevious\n      ? hasChanged(\n          currentState.rbLocalUsn,\n          previousState.rbLocalUsn,\n        )\n      : false,\n};\n\n// ------------------------------------------------------------\n// CAMPOS DE NEGOCIO\n//\n// Deliberadamente excluimos:\n//   trackHashChanged\n//   rbLocalUsnChanged\n//\n// porque ambos pueden cambiar como consecuencia de un\n// cambio real y no deben disparar automatizaciones por sí solos.\n// ------------------------------------------------------------\n\nconst BUSINESS_CHANGE_FIELDS = [\n  'titleChanged',\n  'artistChanged',\n  'albumChanged',\n  'genreChanged',\n  'keyChanged',\n  'remixerChanged',\n  'bpmChanged',\n  'ratingChanged',\n  'lengthChanged',\n  'bitrateChanged',\n  'sampleRateChanged',\n  'playCountChanged',\n];\n\nconst changedFields =\n  BUSINESS_CHANGE_FIELDS\n    .filter(\n      (field) =>\n        changes[field] === true,\n    )\n    .map(\n      (field) =>\n        field.replace(\n          /Changed$/,\n          '',\n        ),\n    );\n\n// ------------------------------------------------------------\n// ESTADO GENERAL\n// ------------------------------------------------------------\n\nconst hasChanges =\n  hasPrevious &&\n  changedFields.length > 0;\n\n// ------------------------------------------------------------\n// RESUMEN HUMANO\n// ------------------------------------------------------------\n\nlet changeSummary;\n\nif (!hasPrevious) {\n  changeSummary =\n    'No previous audit state available';\n} else if (!hasChanges) {\n  changeSummary =\n    'No tracked business field changes detected';\n} else {\n  changeSummary =\n    `Changed: ${changedFields.join(', ')}`;\n}\n\n// ------------------------------------------------------------\n// CAMBIOS DETALLADOS\n// ------------------------------------------------------------\n\nconst changeDetails = {};\n\nfor (\n  const field of BUSINESS_CHANGE_FIELDS\n) {\n  if (\n    changes[field] === true\n  ) {\n    const baseField =\n      field.replace(\n        /Changed$/,\n        '',\n      );\n\n    changeDetails[baseField] = {\n      previous:\n        previousState[\n          baseField ===\n          'length'\n            ? 'lengthSeconds'\n            : baseField\n        ] ?? null,\n\n      current:\n        currentState[\n          baseField ===\n          'length'\n            ? 'lengthSeconds'\n            : baseField\n        ] ?? null,\n    };\n  }\n}\n\n// ------------------------------------------------------------\n// OUTPUT\n// ------------------------------------------------------------\n\nreturn [\n  {\n    json: {\n      ...current,\n\n      hasPrevious,\n\n      previousState,\n\n      currentState,\n\n      changes,\n\n      changedFields,\n\n      changeDetails,\n\n      hasChanges,\n\n      changeSummary,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        224
+      ],
+      "id": "d13ed4a8-76fd-4cce-8652-ead6182d4518",
+      "name": "Detect Track Changes"
+    },
+    {
+      "parameters": {
+        "jsCode": "const current = $('Detect Track Changes').item.json;\n\nconst changedFields = Array.isArray(current.changedFields)\n  ? current.changedFields\n  : [];\n\nconst changesToLog = [];\n\nfor (const field of changedFields) {\n  const details = current.changeDetails?.[field] ?? {};\n\n  changesToLog.push({\n    field_name: field,\n\n    previous_value:\n      details.previous == null\n        ? null\n        : String(details.previous),\n\n    current_value:\n      details.current == null\n        ? null\n        : String(details.current),\n  });\n}\n\nreturn [\n  {\n    json: {\n      ...current,\n\n      changesToLog,\n\n      shouldLogChanges:\n        changesToLog.length > 0,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        400
+      ],
+      "id": "9e0ba64d-cedd-46f2-bf54-2593ccac379b",
+      "name": "Log Track Changes"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with inserted as (\n  insert into public.n8n_track_change_log (\n    event_id,\n    device_id,\n    track_id,\n    event_type,\n    field_name,\n    previous_value,\n    current_value,\n    rb_local_usn\n  )\n  select\n    $1::uuid,\n    $2,\n    $3,\n    $4,\n    change.field_name,\n    nullif(change.previous_value, 'null'),\n    nullif(change.current_value, 'null'),\n    nullif($5, 'null')::bigint\n  from jsonb_to_recordset($6::jsonb) as change(\n    field_name text,\n    previous_value text,\n    current_value text\n  )\n  on conflict (event_id, field_name) do nothing\n  returning\n    id\n)\nselect\n  count(*)::integer as inserted_changes;",
+        "options": {
+          "queryReplacement": "={{ $json.eventId }},{{ $json.deviceId }},{{ $json.trackId }},{{ $json.eventType }},{{ $json.rbLocalUsn }},{{ JSON.stringify($json.changesToLog) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2368,
+        400
+      ],
+      "id": "9b7b24e5-6c36-4631-9773-70a77a334a2f",
+      "name": "Save Change Log",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"accepted\": true,\n  \"superseded\": true,\n  \"eventId\": \"{{ $('Webhook').item.json.body.eventId }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1328,
+        1088
+      ],
+      "id": "dc53c823-89b6-4243-8773-157bdc3d3d45",
+      "name": "Respond Superseded"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2d781a57-1b1e-47f9-bc8c-2d32aba28cb1",
+              "leftValue": "={{ $json.track_found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1248,
+        400
+      ],
+      "id": "c184a5ab-b9c1-4750-ba74-a84857fe2c90",
+      "name": "Check Track Found"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "update public.n8n_event_receipts\nset\n  status = 'failed',\n  processed_at = null,\n  updated_at = now(),\n  last_error = 'track_not_found'\nwhere event_id = $1::uuid\n  and status = 'processing'\nreturning\n  event_id,\n  status,\n  attempts,\n  processed_at,\n  last_error;",
+        "options": {
+          "queryReplacement": "={{ $('Webhook').item.json.body.eventId }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1472,
+        464
+      ],
+      "id": "3bc1d9d9-7df6-4286-990f-2cec2a5dc9ae",
+      "name": "Postgres — Mark Event Failed",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"accepted\": false,\n  \"processed\": false,\n  \"error\": \"track_not_found_in_projection\",\n  \"eventId\": \"{{ $('Webhook').item.json.body.eventId }}\"\n}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1632,
+        480
+      ],
+      "id": "11db9366-518f-4c3d-97ed-d0b07e792922",
+      "name": "Respond Track Processing Failed"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select\n  $1::text as device_id,\n  $2::text as track_id,\n  (\n    select track_uuid\n    from public.n8n_track_event_audit\n    where device_id = $1\n      and track_id = $2\n    order by created_at desc\n    limit 1\n  ) as track_uuid,\n  $3::text as track_hash,\n  $4::bigint as rb_local_usn,\n  now() as updated_at,\n  (\n    select title from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as title,\n  (\n    select artist from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as artist,\n  (\n    select album from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as album,\n  (\n    select genre from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as genre,\n  (\n    select key from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as key,\n  (\n    select remixer from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as remixer,\n  (\n    select bpm from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as bpm,\n  (\n    select rating from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as rating,\n  (\n    select length_seconds from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as length_seconds,\n  (\n    select bitrate from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as bitrate,\n  (\n    select sample_rate from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as sample_rate,\n  (\n    select play_count from public.n8n_track_event_audit\n    where device_id = $1 and track_id = $2\n    order by created_at desc limit 1\n  ) as play_count;",
+        "options": {
+          "queryReplacement": "={{ $('Webhook').item.json.body.deviceId }},{{ $('Webhook').item.json.body.data.trackId }},{{ $('Webhook').item.json.body.data.trackHash }},{{ $('Webhook').item.json.body.cursor.rbLocalUsn }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        672
+      ],
+      "id": "55206c3f-f036-41f9-98a0-dfbf4a561cf0",
+      "name": "Get Deleted Track State",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a2bec61b-9bce-49dc-9062-db92d1b0276e",
+              "name": "eventId",
+              "value": "={{ $('Webhook').item.json.body.eventId }}",
+              "type": "string"
+            },
+            {
+              "id": "dcffa36a-e0d1-47b3-8dd0-7a10336d8be7",
+              "name": "eventType",
+              "value": "={{ $('Webhook').item.json.body.eventType }}",
+              "type": "string"
+            },
+            {
+              "id": "bdda83db-e8dc-465e-8325-1dfedf5a2241",
+              "name": "deviceId",
+              "value": "={{ $('Webhook').item.json.body.deviceId }}",
+              "type": "string"
+            },
+            {
+              "id": "6b37148d-8459-42ad-8440-e75909720c97",
+              "name": "trackId",
+              "value": "={{ $('Webhook').item.json.body.data.trackId }}",
+              "type": "string"
+            },
+            {
+              "id": "78900168-8fc2-4192-9e07-b9ea3059592a",
+              "name": "trackUuid",
+              "value": "={{ $json.track_uuid }}",
+              "type": "string"
+            },
+            {
+              "id": "06d961a6-7e06-4894-a7a5-e8b124498994",
+              "name": "trackHash",
+              "value": "={{ $json.track_hash }}",
+              "type": "string"
+            },
+            {
+              "id": "6d12fe0f-13a0-4178-9050-9f6253ae7483",
+              "name": "rbLocalUsn",
+              "value": "={{ $('Webhook').item.json.body.cursor.rbLocalUsn }}",
+              "type": "number"
+            },
+            {
+              "id": "100b510d-d5be-4d2e-ad97-3eedb042f9fe",
+              "name": "updatedAt",
+              "value": "={{ $('Webhook').item.json.body.occurredAt }}",
+              "type": "string"
+            },
+            {
+              "id": "89e5e554-72aa-4b22-b3c3-fd47675f64c2",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "ebb581e7-68a8-4093-a4c8-6674504abc1b",
+              "name": "artist",
+              "value": "={{ $json.artist }}",
+              "type": "string"
+            },
+            {
+              "id": "83973904-f2a4-4ee4-9cc0-ba9535d16051",
+              "name": "album",
+              "value": "={{ $json.album }}",
+              "type": "string"
+            },
+            {
+              "id": "8af06d81-2ae2-413b-91fe-b4d3ee105e10",
+              "name": "genre",
+              "value": "={{ $json.genre }}",
+              "type": "string"
+            },
+            {
+              "id": "9b4c52b7-19ba-46b1-bdbc-b652cd5cffa4",
+              "name": "key",
+              "value": "={{ $json.key }}",
+              "type": "string"
+            },
+            {
+              "id": "119a7701-033a-4477-88fa-d80bfa24e5b0",
+              "name": "remixer",
+              "value": "={{ $json.remixer }}",
+              "type": "string"
+            },
+            {
+              "id": "5cd4d6eb-7c8b-4cf3-a7cc-46daf1342b34",
+              "name": "bpm",
+              "value": "={{ $json.bpm }}",
+              "type": "number"
+            },
+            {
+              "id": "5a5b9fe6-4f79-40b8-89a4-944ffdf76293",
+              "name": "rating",
+              "value": "={{ $json.rating }}",
+              "type": "number"
+            },
+            {
+              "id": "be83c8a4-601b-4159-9159-b9aa48a634f0",
+              "name": "lengthSeconds",
+              "value": "={{ $json.length_seconds }}",
+              "type": "number"
+            },
+            {
+              "id": "681eabc4-373c-4891-b2f3-7ca1a74c18c9",
+              "name": "bitrate",
+              "value": "={{ $json.bitrate }}",
+              "type": "number"
+            },
+            {
+              "id": "ffeed2ea-ccb8-42fa-aa08-89bce23470fe",
+              "name": "sampleRate",
+              "value": "={{ $json.sample_rate }}",
+              "type": "number"
+            },
+            {
+              "id": "f7def6d1-780d-4c57-9260-ad9105a84b8e",
+              "name": "playCount",
+              "value": "={{ $json.play_count }}",
+              "type": "number"
+            },
+            {
+              "id": "e27266fe-0c2c-4109-860c-4e15c51183cc",
+              "name": "track",
+              "value": "={{ null }}",
+              "type": "object"
+            },
+            {
+              "id": "da7a0c00-bb3e-4b35-a619-e5b8ae8000e6",
+              "name": "isDeleted",
+              "value": "={{ true }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1536,
+        672
+      ],
+      "id": "9d3835af-75a6-456c-85d0-a2b9ec1b8222",
+      "name": "Normalize Track Deleted"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "update public.n8n_event_receipts\nset\n  status = 'failed',\n  processed_at = null,\n  updated_at = now(),\n  last_error = 'unsupported_event_type'\nwhere event_id = $1::uuid\n  and status = 'processing'\nreturning\n  event_id,\n  event_type,\n  status,\n  attempts,\n  processed_at,\n  last_error;",
+        "options": {
+          "queryReplacement": "={{ $('Webhook').item.json.body.eventId }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1312,
+        864
+      ],
+      "id": "e91411ba-e10d-493d-bb5f-353f742b4112",
+      "name": "Postgres — Mark Unsupported Event",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"accepted\": false,\n  \"processed\": false,\n  \"error\": \"unsupported_event_type\",\n  \"eventType\": \"{{ $('Webhook').item.json.body.eventType }}\",\n  \"eventId\": \"{{ $('Webhook').item.json.body.eventId }}\"\n}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1536,
+        864
+      ],
+      "id": "8226863f-1ed8-4de6-903d-baa105c91db5",
+      "name": "Respond Unsupported Event"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "update public.n8n_event_receipts\nset\n  status = 'processed',\n  processed_at = now(),\n  updated_at = now(),\n  last_error = 'superseded_historical_event'\nwhere event_id = $1::uuid\n  and status = 'processing'\nreturning\n  event_id,\n  status,\n  attempts,\n  processed_at,\n  last_error;",
+        "options": {
+          "queryReplacement": "={{ $('Webhook').item.json.body.eventId }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        912,
+        768
+      ],
+      "id": "2786362e-0d08-438e-a3a8-aff1edfdc390",
+      "name": "Mark Event Superseded",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const current = $('Detect Track Changes').item.json;\n\nconst jobs = [];\nconst changes = current.changes ?? {};\nconst changedFields = Array.isArray(current.changedFields)\n  ? current.changedFields\n  : [];\n\nconst intelligenceFields = [\n  'title',\n  'artist',\n  'album',\n  'genre',\n  'key',\n  'remixer',\n  'bpm',\n  'length',\n  'bitrate',\n  'sampleRate',\n];\n\nconst intelligenceChanged =\n  !current.hasPrevious ||\n  intelligenceFields.some((field) => changedFields.includes(field));\n\nconst preferenceChanged =\n  changes.ratingChanged === true ||\n  changes.playCountChanged === true;\n\nconst basePayload = {\n  schemaVersion: 1,\n  eventId: current.eventId,\n  eventType: current.eventType,\n  deviceId: current.deviceId,\n  trackId: current.trackId,\n  trackUuid: current.trackUuid,\n  trackHash: current.trackHash,\n  rbLocalUsn: current.rbLocalUsn,\n  changedFields,\n  changeDetails: current.changeDetails ?? {},\n  currentState: current.currentState ?? {},\n  previousState: current.previousState ?? null,\n};\n\nif (intelligenceChanged) {\n  jobs.push({\n    job_key: `${current.deviceId}:${current.trackId}:track.intelligence.refresh:${current.trackHash ?? current.rbLocalUsn}`,\n    job_type: 'track.intelligence.refresh',\n    priority: 50,\n    event_id: current.eventId,\n    device_id: current.deviceId,\n    track_id: current.trackId,\n    rb_local_usn: current.rbLocalUsn,\n    payload: {\n      ...basePayload,\n      reason: current.hasPrevious ? 'tracked_field_changed' : 'initial_track_snapshot',\n    },\n  });\n}\n\nif (preferenceChanged) {\n  jobs.push({\n    job_key: `${current.deviceId}:${current.trackId}:track.preference.update:${current.eventId}`,\n    job_type: 'track.preference.update',\n    priority: 40,\n    event_id: current.eventId,\n    device_id: current.deviceId,\n    track_id: current.trackId,\n    rb_local_usn: current.rbLocalUsn,\n    payload: {\n      ...basePayload,\n      reason: 'rating_or_play_count_changed',\n      ratingChanged: changes.ratingChanged === true,\n      playCountChanged: changes.playCountChanged === true,\n    },\n  });\n}\n\nreturn [{\n  json: {\n    ...current,\n    intelligenceJobs: jobs,\n    intelligenceJobCount: jobs.length,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        224
+      ],
+      "id": "c8e1f306-68fc-46ea-a7b8-c4a3df534025",
+      "name": "Build Intelligence Jobs"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with incoming as (\n  select\n    job.job_key,\n    job.job_type,\n    job.priority,\n    job.event_id::uuid,\n    job.device_id,\n    job.track_id,\n    nullif(job.rb_local_usn::text, '')::bigint as rb_local_usn,\n    coalesce(job.payload, '{}'::jsonb) as payload\n  from jsonb_to_recordset($1::jsonb) as job(\n    job_key text,\n    job_type text,\n    priority integer,\n    event_id text,\n    device_id text,\n    track_id text,\n    rb_local_usn bigint,\n    payload jsonb\n  )\n), inserted as (\n  insert into public.dj_intelligence_jobs (\n    job_key,\n    job_type,\n    priority,\n    event_id,\n    device_id,\n    track_id,\n    rb_local_usn,\n    payload\n  )\n  select\n    job_key,\n    job_type,\n    priority,\n    event_id,\n    device_id,\n    track_id,\n    rb_local_usn,\n    payload\n  from incoming\n  on conflict (job_key) do nothing\n  returning id\n)\nselect count(*)::integer as inserted_jobs\nfrom inserted;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($('Build Intelligence Jobs').item.json.intelligenceJobs) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2544,
+        400
+      ],
+      "id": "08d6947f-a01a-4abf-ae38-c53d0ed4d89f",
+      "name": "Enqueue Intelligence Jobs",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into public.n8n_track_event_audit (\n  event_id,\n  event_type,\n  device_id,\n  track_id,\n  track_uuid,\n  track_hash,\n  rb_local_usn,\n  title,\n  artist,\n  album,\n  genre,\n  key,\n  remixer,\n  bpm,\n  rating,\n  length_seconds,\n  bitrate,\n  sample_rate,\n  play_count,\n  processed_at\n)\nvalues (\n  $1::uuid,\n  $2,\n  $3,\n  $4,\n  $5,\n  $6,\n  nullif($7, 'null')::bigint,\n  nullif($8, 'null'),\n  nullif($9, 'null'),\n  nullif($10, 'null'),\n  nullif($11, 'null'),\n  nullif($12, 'null'),\n  nullif($13, 'null'),\n  nullif($14, 'null')::numeric,\n  nullif($15, 'null')::integer,\n  nullif($16, 'null')::integer,\n  nullif($17, 'null')::integer,\n  nullif($18, 'null')::integer,\n  nullif($19, 'null')::integer,\n  now()\n)\non conflict (event_id) do nothing\nreturning\n  id,\n  event_id,\n  event_type,\n  device_id,\n  track_id,\n  track_uuid,\n  track_hash,\n  rb_local_usn,\n  title,\n  artist,\n  album,\n  genre,\n  key,\n  remixer,\n  bpm,\n  rating,\n  length_seconds,\n  bitrate,\n  sample_rate,\n  play_count,\n  processed_at,\n  created_at;",
+        "options": {
+          "queryReplacement": "={{ $json.eventId }},{{ $json.eventType }},{{ $json.deviceId }},{{ $json.trackId }},{{ $json.trackUuid }},{{ $json.trackHash }},{{ $json.rbLocalUsn }},{{ $json.title }},{{ $json.artist }},{{ $json.album }},{{ $json.genre }},{{ $json.key }},{{ $json.remixer }},{{ $json.bpm }},{{ $json.rating }},{{ $json.lengthSeconds }},{{ $json.bitrate }},{{ $json.sampleRate }},{{ $json.playCount }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2048,
+        672
+      ],
+      "id": "b00dee5b-c81d-41d5-b2fd-b3d0a3b9f1a3",
+      "name": "Save Deleted Track Audit",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $('Normalize Track Deleted').item.json;\nconst job = {\n  job_key: `${src.deviceId}:${src.trackId}:track.intelligence.retire:${src.rbLocalUsn}`,\n  job_type: 'track.intelligence.retire',\n  priority: 70,\n  event_id: src.eventId,\n  device_id: src.deviceId,\n  track_id: src.trackId,\n  rb_local_usn: src.rbLocalUsn,\n  payload: {\n    schemaVersion: 1,\n    eventId: src.eventId,\n    eventType: src.eventType,\n    deviceId: src.deviceId,\n    trackId: src.trackId,\n    trackUuid: src.trackUuid,\n    trackHash: src.trackHash,\n    rbLocalUsn: src.rbLocalUsn,\n    title: src.title ?? null,\n    artist: src.artist ?? null,\n    album: src.album ?? null,\n    genre: src.genre ?? null,\n    key: src.key ?? null,\n    remixer: src.remixer ?? null,\n    bpm: src.bpm ?? null,\n    rating: src.rating ?? null,\n    lengthSeconds: src.lengthSeconds ?? null,\n    bitrate: src.bitrate ?? null,\n    sampleRate: src.sampleRate ?? null,\n    playCount: src.playCount ?? null,\n    reason: 'track_deleted',\n  },\n};\nreturn [{ json: { ...src, intelligenceJobs: [job], intelligenceJobCount: 1 } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        672
+      ],
+      "id": "d0eebb57-fd04-4f07-8872-d0ea673e524a",
+      "name": "Build Deleted Intelligence Job"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with incoming as (\n  select\n    job.job_key,\n    job.job_type,\n    job.priority,\n    job.event_id::uuid,\n    job.device_id,\n    job.track_id,\n    nullif(job.rb_local_usn::text, '')::bigint as rb_local_usn,\n    coalesce(job.payload, '{}'::jsonb) as payload\n  from jsonb_to_recordset($1::jsonb) as job(\n    job_key text,\n    job_type text,\n    priority integer,\n    event_id text,\n    device_id text,\n    track_id text,\n    rb_local_usn bigint,\n    payload jsonb\n  )\n), inserted as (\n  insert into public.dj_intelligence_jobs (\n    job_key,\n    job_type,\n    priority,\n    event_id,\n    device_id,\n    track_id,\n    rb_local_usn,\n    payload\n  )\n  select\n    job_key,\n    job_type,\n    priority,\n    event_id,\n    device_id,\n    track_id,\n    rb_local_usn,\n    payload\n  from incoming\n  on conflict (job_key) do nothing\n  returning id\n)\nselect count(*)::integer as inserted_jobs\nfrom inserted;",
+        "options": {
+          "queryReplacement": "={{ JSON.stringify($('Build Deleted Intelligence Job').item.json.intelligenceJobs) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2544,
+        672
+      ],
+      "id": "da524fdc-ca3d-4fd2-b389-3de925618b5e",
+      "name": "Enqueue Deleted Intelligence Job",
+      "credentials": {
+        "postgres": {
+          "id": "InUYipG1hncZ9E54",
+          "name": "Supabase DJ Sync — PostgreSQL"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Postgres — Claim Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres — Claim Event": {
+      "main": [
+        [
+          {
+            "node": "Route Event Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Event Action": {
+      "main": [
+        [
+          {
+            "node": "Route Track Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Track Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Event Superseded",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Track Event Type": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Deleted Track State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Postgres — Mark Unsupported Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Check Track Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Track Found": {
+      "main": [
+        [
+          {
+            "node": "Normalize Track Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Postgres — Mark Event Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Track Event": {
+      "main": [
+        [
+          {
+            "node": "Track Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Track Summary": {
+      "main": [
+        [
+          {
+            "node": "Get Previous Track Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Previous Track Audit": {
+      "main": [
+        [
+          {
+            "node": "Detect Track Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Track Changes": {
+      "main": [
+        [
+          {
+            "node": "Save Track Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Track Audit": {
+      "main": [
+        [
+          {
+            "node": "Log Track Changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Track Changes": {
+      "main": [
+        [
+          {
+            "node": "Build Intelligence Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Change Log": {
+      "main": [
+        [
+          {
+            "node": "Enqueue Intelligence Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres — Mark Event Processed": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Deleted Track State": {
+      "main": [
+        [
+          {
+            "node": "Normalize Track Deleted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Track Deleted": {
+      "main": [
+        [
+          {
+            "node": "Save Deleted Track Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres — Mark Event Failed": {
+      "main": [
+        [
+          {
+            "node": "Respond Track Processing Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres — Mark Unsupported Event": {
+      "main": [
+        [
+          {
+            "node": "Respond Unsupported Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Event Superseded": {
+      "main": [
+        [
+          {
+            "node": "Respond Superseded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Intelligence Jobs": {
+      "main": [
+        [
+          {
+            "node": "Save Change Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enqueue Intelligence Jobs": {
+      "main": [
+        [
+          {
+            "node": "Postgres — Mark Event Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Deleted Track Audit": {
+      "main": [
+        [
+          {
+            "node": "Build Deleted Intelligence Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Deleted Intelligence Job": {
+      "main": [
+        [
+          {
+            "node": "Enqueue Deleted Intelligence Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enqueue Deleted Intelligence Job": {
+      "main": [
+        [
+          {
+            "node": "Postgres — Mark Event Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2fcbaadf-9878-46c5-ba57-225ebbff1b44",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6bba1ce449d66b8897e34742862a3de4f17fbab5775576a7f450300f77c79b59"
+  },
+  "id": "nZIwSFoAgiQ7VmzU",
+  "tags": []
+}

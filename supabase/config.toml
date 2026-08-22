@@ -6,3 +6,5 @@ verify_jwt = false
 
 [functions.sync-snapshot]
 verify_jwt = false
+[functions.sync-event-dispatcher]
+verify_jwt = false
