@@ -1,4 +1,9 @@
-import type { ExtractedCue, ExtractedFile, ExtractedPlaylistRef, ExtractedTrackSample } from './track-extractor.js';
+import type {
+  ExtractedCue,
+  ExtractedFile,
+  ExtractedPlaylistRef,
+  ExtractedTrackSample,
+} from './track-extractor.js';
 
 export interface NormalizedTrack {
   schemaVersion: 1;
@@ -48,7 +53,7 @@ export interface NormalizedTrack {
 }
 
 export function normalizeTrack(input: ExtractedTrackSample): NormalizedTrack {
-  const primaryFile = pickPrimaryFile(input.files);
+  const primaryFile = pickPrimaryFile(input);
 
   return {
     schemaVersion: 1,
@@ -81,7 +86,7 @@ export function normalizeTrack(input: ExtractedTrackSample): NormalizedTrack {
     },
     primaryFile: primaryFile
       ? {
-          id: primaryFile.id,
+          id: cleanString(primaryFile.id),
           path: cleanString(primaryFile.path),
           localPath: cleanString(primaryFile.localPath),
           hash: cleanString(primaryFile.hash),
@@ -107,12 +112,37 @@ export function normalizeTrack(input: ExtractedTrackSample): NormalizedTrack {
   };
 }
 
-function pickPrimaryFile(files: ExtractedFile[]): ExtractedFile | null {
+function pickPrimaryFile(input: ExtractedTrackSample): ExtractedFile | null {
   return (
-    files.find((file) => file.kind === 'media' && Boolean(file.localPath)) ??
-    files.find((file) => file.kind === 'media') ??
-    null
+    input.files.find(
+      (file) => file.kind === 'media' && Boolean(file.localPath),
+    ) ??
+    input.files.find((file) => file.kind === 'media') ??
+    buildContentFileFallback(input)
   );
+}
+
+function buildContentFileFallback(
+  input: ExtractedTrackSample,
+): ExtractedFile | null {
+  const path = cleanString(input.filePath);
+  const fileName = cleanString(input.fileName);
+  const size = finiteNumber(input.fileSize);
+
+  if (!path && !fileName && size === null) {
+    return null;
+  }
+
+  const resolvedPath = path ?? fileName;
+
+  return {
+    id: `content:${input.id}`,
+    path: resolvedPath,
+    localPath: resolvedPath,
+    hash: null,
+    size,
+    kind: 'media',
+  };
 }
 
 function normalizeFiles(files: ExtractedFile[]): ExtractedFile[] {

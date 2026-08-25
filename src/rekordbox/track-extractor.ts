@@ -222,6 +222,15 @@ export async function extractTrackSamplesPage(
       getPlaylists(db, content.ID),
     ]);
 
+    const contentFallbackMediaFile =
+      pickPrimaryMediaFile(files) === undefined
+        ? createContentFallbackMediaFile(content)
+        : null;
+
+    if (contentFallbackMediaFile) {
+      files.push(contentFallbackMediaFile);
+    }
+
     const primaryFile =
       pickPrimaryMediaFile(files);
 
@@ -559,6 +568,69 @@ async function getPlaylists(
           row.TrackNo,
         ),
     }),
+  );
+}
+
+
+function createContentFallbackMediaFile(
+  content: ContentRow,
+): ExtractedFile | null {
+  const folderPath = cleanString(content.FolderPath);
+  const fileName = cleanString(content.FileNameL);
+  const candidatePath = resolveContentFilePath(folderPath, fileName);
+
+  if (!candidatePath || !looksLikeMediaFile(candidatePath)) {
+    return null;
+  }
+
+  return {
+    id: `content:${content.ID}`,
+    path: candidatePath,
+    localPath: isAbsoluteLocalPath(candidatePath)
+      ? candidatePath
+      : null,
+    hash: null,
+    size: numberOrNull(content.FileSize),
+    kind: 'media',
+  };
+}
+
+function resolveContentFilePath(
+  folderPath: string | null,
+  fileName: string | null,
+): string | null {
+  if (folderPath && fileName) {
+    const normalizedFolder = folderPath.replace(/\\/g, '/');
+    const normalizedName = fileName.replace(/\\/g, '/').replace(/^\/+/, '');
+
+    if (
+      normalizedFolder.toLowerCase() === normalizedName.toLowerCase() ||
+      normalizedFolder.toLowerCase().endsWith(`/${normalizedName.toLowerCase()}`)
+    ) {
+      return normalizedFolder;
+    }
+
+    if (normalizedFolder.toLowerCase().match(/\.[a-z0-9]{2,5}$/i)) {
+      return normalizedFolder;
+    }
+
+    return `${normalizedFolder.replace(/\/+$/, '')}/${normalizedName}`;
+  }
+
+  return folderPath ?? fileName ?? null;
+}
+
+function looksLikeMediaFile(filePath: string): boolean {
+  return /\.(mp3|wav|wave|aif|aiff|flac|m4a|aac|ogg|oga|alac|mp4|mov)$/i.test(
+    filePath,
+  );
+}
+
+function isAbsoluteLocalPath(filePath: string): boolean {
+  return (
+    filePath.startsWith('/') ||
+    /^[A-Za-z]:[\\/]/.test(filePath) ||
+    filePath.startsWith('\\\\')
   );
 }
 

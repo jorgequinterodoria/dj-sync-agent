@@ -6,6 +6,7 @@
 *.secret
 *.key
 *.pem
+dist/
 
 # macOS
 .DS_Store
