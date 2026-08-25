@@ -2,15 +2,24 @@ import type {
   AudioAnalysis,
   AudioAnalysisPersistence,
   AudioAnalysisPersistenceResult,
+  AudioAnalysisServiceOptions,
 } from './audio-analysis.js';
 
 export class AudioAnalysisService {
+  private readonly analyzer: (
+    filePath: string,
+  ) => Promise<AudioAnalysis>;
+
+  private readonly persistence:
+    | AudioAnalysisPersistence
+    | undefined;
+
   public constructor(
-    private readonly analyzer: (
-      filePath: string,
-    ) => Promise<AudioAnalysis>,
-    private readonly persistence: AudioAnalysisPersistence,
-  ) {}
+    options: AudioAnalysisServiceOptions,
+  ) {
+    this.analyzer = options.analyzer;
+    this.persistence = options.persistence;
+  }
 
   public async analyze(
     filePath: string,
@@ -40,6 +49,12 @@ export class AudioAnalysisService {
 
     if (!normalizedPath) {
       throw new Error('Audio file path is required.');
+    }
+
+    if (!this.persistence) {
+      throw new Error(
+        'Audio analysis persistence is not configured.',
+      );
     }
 
     const analysis = await this.analyzer(normalizedPath);

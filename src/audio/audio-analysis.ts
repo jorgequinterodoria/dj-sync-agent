@@ -22,5 +22,5 @@ export interface AudioAnalysisServiceOptions {
   analyzer: (
     filePath: string,
   ) => Promise<AudioAnalysis>;
-  persistence: AudioAnalysisPersistence;
+  persistence?: AudioAnalysisPersistence;
 }

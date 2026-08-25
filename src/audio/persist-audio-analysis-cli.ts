@@ -19,10 +19,12 @@ async function main(): Promise<void> {
     throw new Error('SYNC_AGENT_ID is required.');
   }
 
-  const service = new AudioAnalysisService(
-    analyzeAudioFile,
-    new SupabaseAudioAnalysisPersistence(deviceId),
-  );
+  const service = new AudioAnalysisService({
+    analyzer: analyzeAudioFile,
+    persistence: new SupabaseAudioAnalysisPersistence(
+      deviceId,
+    ),
+  });
 
   const result = await service.analyzeAndPersist(
     trackId,
