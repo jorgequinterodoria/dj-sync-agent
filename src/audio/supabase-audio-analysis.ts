@@ -70,6 +70,7 @@ where device_id = ${sqlLiteral(deviceId)}
   and track_id = ${sqlLiteral(trackId)}
   and audio_checksum = ${sqlLiteral(asset.checksum)}
   and asset_status = 'verified'
+  and track_hash is not null
 limit 1;
 `;
 
@@ -88,7 +89,7 @@ limit 1;
   return trackHash;
 }
 
-async function findLatestAnalysisRunId(
+async function findLatestCompletedAnalysisRunId(
   deviceId: string,
   trackId: string,
   trackHash: string,
@@ -101,7 +102,8 @@ where device_id = ${sqlLiteral(deviceId)}
   and track_id = ${sqlLiteral(trackId)}
   and track_hash = ${sqlLiteral(trackHash)}
   and status = 'completed'
-order by completed_at desc nulls last, created_at desc, id desc
+  and completed_at is not null
+order by completed_at desc, id desc
 limit 1;
 `;
 
@@ -162,11 +164,12 @@ export class SupabaseAudioAnalysisPersistence
       asset,
     );
 
-    const analysisRunId = await findLatestAnalysisRunId(
-      this.deviceId,
-      normalizedTrackId,
-      trackHash,
-    );
+    const analysisRunId =
+      await findLatestCompletedAnalysisRunId(
+        this.deviceId,
+        normalizedTrackId,
+        trackHash,
+      );
 
     const rows = this.buildFeatureRows(
       analysisRunId,
