@@ -2,9 +2,9 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import type {
   AudioAnalysis,
-  AudioAnalysisPersistence,
   AudioAnalysisPersistenceResult,
 } from './audio-analysis.js';
+import type { AudioAnalysisPersistencePort } from './audio-analysis-persistence.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -80,7 +80,7 @@ function numericSqlValue(value: number): string {
 }
 
 export class SupabaseAudioAnalysisPersistence
-  implements AudioAnalysisPersistence
+  implements AudioAnalysisPersistencePort
 {
   public constructor(
     private readonly deviceId: string,

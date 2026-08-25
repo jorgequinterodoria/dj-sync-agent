@@ -1,9 +1,15 @@
 import type {
   AudioAnalysis,
-  AudioAnalysisPersistence,
   AudioAnalysisPersistenceResult,
-  AudioAnalysisServiceOptions,
 } from './audio-analysis.js';
+import type { AudioAnalysisPersistencePort } from './audio-analysis-persistence.js';
+
+export interface AudioAnalysisServiceOptions {
+  analyzer: (
+    filePath: string,
+  ) => Promise<AudioAnalysis>;
+  persistence?: AudioAnalysisPersistencePort;
+}
 
 export class AudioAnalysisService {
   private readonly analyzer: (
@@ -11,7 +17,7 @@ export class AudioAnalysisService {
   ) => Promise<AudioAnalysis>;
 
   private readonly persistence:
-    | AudioAnalysisPersistence
+    | AudioAnalysisPersistencePort
     | undefined;
 
   public constructor(
