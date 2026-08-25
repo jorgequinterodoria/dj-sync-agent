@@ -1,5 +1,6 @@
 import { analyzeAudioFile } from './audio-analyzer.js';
 import { AudioAnalysisService } from './audio-analysis-service.js';
+import { verifyAudioAsset } from './audio-verifier.js';
 import { SupabaseAudioAnalysisPersistence } from './supabase-audio-analysis.js';
 
 async function main(): Promise<void> {
@@ -21,6 +22,7 @@ async function main(): Promise<void> {
 
   const service = new AudioAnalysisService({
     analyzer: analyzeAudioFile,
+    verifier: verifyAudioAsset,
     persistence: new SupabaseAudioAnalysisPersistence(
       deviceId,
     ),

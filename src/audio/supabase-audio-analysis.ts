@@ -5,6 +5,7 @@ import type {
   AudioAnalysisPersistenceResult,
 } from './audio-analysis.js';
 import type { AudioAnalysisPersistencePort } from './audio-analysis-persistence.js';
+import type { VerifiedAudioAsset } from './audio-verifier.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -26,25 +27,71 @@ async function runSql(sql: string): Promise<string> {
   return stdout;
 }
 
-function parseAnalysisRunId(output: string): number | null {
+function parseNumericResult(
+  output: string,
+  marker: string,
+): number | null {
   const match = output.match(
-    /RESULT_ANALYSIS_RUN_ID:(\d+)/,
+    new RegExp(`${marker}:(\\d+)`),
   );
 
   if (!match?.[1]) {
     return null;
   }
 
-  const analysisRunId = Number(match[1]);
+  const value = Number(match[1]);
 
-  return Number.isSafeInteger(analysisRunId)
-    ? analysisRunId
-    : null;
+  return Number.isSafeInteger(value) ? value : null;
+}
+
+function parseTextResult(
+  output: string,
+  marker: string,
+): string | null {
+  const match = output.match(
+    new RegExp(`${marker}:(.+)`),
+  );
+
+  const value = match?.[1]?.trim();
+
+  return value || null;
+}
+
+async function findAudioAssetTrackHash(
+  deviceId: string,
+  trackId: string,
+  asset: VerifiedAudioAsset,
+): Promise<string> {
+  const sql = `
+select
+  'RESULT_TRACK_HASH:' || track_hash as result
+from public.dj_track_audio_assets
+where device_id = ${sqlLiteral(deviceId)}
+  and track_id = ${sqlLiteral(trackId)}
+  and audio_checksum = ${sqlLiteral(asset.checksum)}
+  and asset_status = 'verified'
+limit 1;
+`;
+
+  const output = await runSql(sql);
+  const trackHash = parseTextResult(
+    output,
+    'RESULT_TRACK_HASH',
+  );
+
+  if (!trackHash) {
+    throw new Error(
+      `No verified audio asset found for ${trackId} with checksum ${asset.checksum}.`,
+    );
+  }
+
+  return trackHash;
 }
 
 async function findLatestAnalysisRunId(
   deviceId: string,
   trackId: string,
+  trackHash: string,
 ): Promise<number> {
   const sql = `
 select
@@ -52,17 +99,21 @@ select
 from public.dj_track_analysis_runs
 where device_id = ${sqlLiteral(deviceId)}
   and track_id = ${sqlLiteral(trackId)}
+  and track_hash = ${sqlLiteral(trackHash)}
   and status = 'completed'
 order by completed_at desc nulls last, created_at desc, id desc
 limit 1;
 `;
 
   const output = await runSql(sql);
-  const analysisRunId = parseAnalysisRunId(output);
+  const analysisRunId = parseNumericResult(
+    output,
+    'RESULT_ANALYSIS_RUN_ID',
+  );
 
   if (analysisRunId === null) {
     throw new Error(
-      `No completed analysis run found for ${trackId}.`,
+      `No completed analysis run found for ${trackId} and track hash ${trackHash}.`,
     );
   }
 
@@ -97,6 +148,7 @@ export class SupabaseAudioAnalysisPersistence
   public async persist(
     trackId: string,
     analysis: AudioAnalysis,
+    asset: VerifiedAudioAsset,
   ): Promise<AudioAnalysisPersistenceResult> {
     const normalizedTrackId = trackId.trim();
 
@@ -104,9 +156,16 @@ export class SupabaseAudioAnalysisPersistence
       throw new Error('Track ID is required.');
     }
 
+    const trackHash = await findAudioAssetTrackHash(
+      this.deviceId,
+      normalizedTrackId,
+      asset,
+    );
+
     const analysisRunId = await findLatestAnalysisRunId(
       this.deviceId,
       normalizedTrackId,
+      trackHash,
     );
 
     const rows = this.buildFeatureRows(
