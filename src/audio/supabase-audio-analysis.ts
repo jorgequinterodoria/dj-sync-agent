@@ -53,9 +53,9 @@ function parseAnalysisRunId(output: string): number | null {
 
   if (json) {
     const candidates = [
+      json.id,
       json.analysisRunId,
       json.analysis_run_id,
-      json.id,
       json.source_run_id,
     ];
 
@@ -74,14 +74,14 @@ function parseAnalysisRunId(output: string): number | null {
   }
 
   const match = output.match(
-    /\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|\s*([a-fA-F0-9-]{20,})\s*\|\s*(\d+)\s*\|/,
+    /^\|\s*(\d+)\s*\|$/m,
   );
 
   if (!match) {
     return null;
   }
 
-  const value = Number(match[4]);
+  const value = Number(match[1]);
 
   return Number.isInteger(value) ? value : null;
 }
@@ -167,31 +167,31 @@ do update set
     };
   }
 
-  private async findLatestAnalysisRunId(
-    trackId: string,
-  ): Promise<number> {
-    const trackQuery = `
+private async findLatestAnalysisRunId(
+  trackId: string,
+): Promise<number> {
+  const trackQuery = `
 select
-  device_id,
-  track_id,
-  track_hash,
-  id as source_run_id
+  id
 from public.dj_track_analysis_runs
 where device_id = ${sqlLiteral(this.deviceId)}
   and track_id = ${sqlLiteral(trackId)}
-order by created_at desc, id desc
+  and status = 'completed'
+order by completed_at desc nulls last, created_at desc, id desc
 limit 1;
 `;
 
-    const output = await runSql(trackQuery);
-    const analysisRunId = parseAnalysisRunId(output);
+  const output = await runSql(trackQuery);
+  const analysisRunId = parseAnalysisRunId(output);
 
-    if (analysisRunId === null) {
-      throw new Error(`No analysis run found for ${trackId}.`);
-    }
-
-    return analysisRunId;
+  if (analysisRunId === null) {
+    throw new Error(
+      `No completed analysis run found for ${trackId}.`,
+    );
   }
+
+  return analysisRunId;
+}
 
   private buildFeatureRows(
     analysisRunId: number,
