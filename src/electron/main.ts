@@ -4,19 +4,27 @@ import {
   ipcMain,
 } from 'electron';
 import { fileURLToPath } from 'node:url';
-import { createDJSyncService } from '../runtime/dj-sync-service.js';
 
-let mainWindow: BrowserWindow | null = null;
+import {
+  createDJSyncService,
+} from '../runtime/dj-sync-service.js';
+
+import {
+  createDJSyncApplicationState,
+} from '../runtime/dj-sync-application-state.js';
+
+let mainWindow:
+  | BrowserWindow
+  | null =
+  null;
 
 const service =
   createDJSyncService();
 
-let statusTimer:
-  ReturnType<typeof setInterval> | null =
-  null;
-
-let statusRefreshInFlight =
-  false;
+const applicationState =
+  createDJSyncApplicationState(
+    service,
+  );
 
 interface AppInfo {
   name: string;
@@ -27,64 +35,42 @@ interface AppInfo {
   arch: string;
 }
 
-async function publishServiceStatus(): Promise<void> {
+function publishApplicationSnapshot():
+  void {
   if (
     mainWindow === null ||
-    mainWindow.isDestroyed() ||
-    statusRefreshInFlight
+    mainWindow.isDestroyed()
   ) {
     return;
   }
 
-  statusRefreshInFlight = true;
+  mainWindow.webContents.send(
+    'application:update',
+    applicationState.snapshot(),
+  );
+}
 
-  try {
-    const snapshot =
-      await service.status();
+function registerApplicationEvents():
+  void {
+  applicationState.subscribe(
+    (snapshot) => {
+      if (
+        mainWindow === null ||
+        mainWindow.isDestroyed()
+      ) {
+        return;
+      }
 
-    if (
-      mainWindow !== null &&
-      !mainWindow.isDestroyed()
-    ) {
       mainWindow.webContents.send(
-        'service:update',
+        'application:update',
         snapshot,
       );
-    }
-  } finally {
-    statusRefreshInFlight =
-      false;
-  }
-}
-
-function startStatusPolling(): void {
-  if (
-    statusTimer !== null
-  ) {
-    return;
-  }
-
-  statusTimer =
-    setInterval(() => {
-      void publishServiceStatus();
-    }, 5000);
-}
-
-function stopStatusPolling(): void {
-  if (
-    statusTimer === null
-  ) {
-    return;
-  }
-
-  clearInterval(
-    statusTimer,
+    },
   );
-
-  statusTimer = null;
 }
 
-function registerIpcHandlers(): void {
+function registerIpcHandlers():
+  void {
   ipcMain.handle(
     'app:get-info',
     (): AppInfo => ({
@@ -102,50 +88,36 @@ function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
-    'service:status',
+    'application:status',
     async () => {
-      return service.status();
+      return applicationState.refresh();
     },
   );
 
   ipcMain.handle(
     'service:start',
     async () => {
-      const snapshot =
-        await service.start();
-
-      void publishServiceStatus();
-
-      return snapshot;
+      return applicationState.start();
     },
   );
 
   ipcMain.handle(
     'service:stop',
     async () => {
-      const snapshot =
-        await service.stop();
-
-      void publishServiceStatus();
-
-      return snapshot;
+      return applicationState.stop();
     },
   );
 
   ipcMain.handle(
     'service:restart',
     async () => {
-      const snapshot =
-        await service.restart();
-
-      void publishServiceStatus();
-
-      return snapshot;
+      return applicationState.restart();
     },
   );
 }
 
-function resolveRendererPath(): string {
+function resolveRendererPath():
+  string {
   return fileURLToPath(
     new URL(
       './renderer/index.html',
@@ -154,7 +126,8 @@ function resolveRendererPath(): string {
   );
 }
 
-function createMainWindow(): void {
+function createMainWindow():
+  void {
   const preloadPath =
     fileURLToPath(
       new URL(
@@ -184,7 +157,7 @@ function createMainWindow(): void {
     () => {
       mainWindow?.show();
 
-      void publishServiceStatus();
+      void applicationState.refresh();
     },
   );
 
@@ -200,35 +173,49 @@ function createMainWindow(): void {
   );
 }
 
-async function shutdown(): Promise<void> {
-  stopStatusPolling();
+function startApplicationState():
+  void {
+  applicationState.startPolling();
+}
+
+function stopApplicationState():
+  void {
+  applicationState.stopPolling();
 }
 
 let shuttingDown =
   false;
 
-app.whenReady().then(() => {
-  registerIpcHandlers();
-  createMainWindow();
-  startStatusPolling();
+app.whenReady().then(
+  async () => {
+    registerApplicationEvents();
+    registerIpcHandlers();
+    createMainWindow();
+    startApplicationState();
 
-  app.on(
-    'activate',
-    () => {
-      if (
-        BrowserWindow.getAllWindows()
-          .length === 0
-      ) {
-        createMainWindow();
-      }
-    },
-  );
-});
+    await applicationState.refresh();
+
+    app.on(
+      'activate',
+      () => {
+        if (
+          BrowserWindow
+            .getAllWindows()
+            .length === 0
+        ) {
+          createMainWindow();
+        }
+      },
+    );
+  },
+);
 
 app.on(
   'before-quit',
   (event) => {
-    if (shuttingDown) {
+    if (
+      shuttingDown
+    ) {
       return;
     }
 
@@ -236,10 +223,9 @@ app.on(
 
     event.preventDefault();
 
-    void shutdown()
-      .finally(() => {
-        app.quit();
-      });
+    stopApplicationState();
+
+    app.quit();
   },
 );
 

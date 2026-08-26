@@ -109,27 +109,33 @@ function setError(
   );
 }
 
-function renderStatus(
-  snapshot: SyncStatusData,
+function renderApplicationState(
+  snapshot:
+    DJSyncApplicationSnapshot,
 ): void {
-  const service = snapshot.service;
+  const service =
+    snapshot.service;
 
-  const database = snapshot.database;
+  const database =
+    service.database;
 
-  const server = snapshot.server;
+  const server =
+    service.server;
 
-  const sync = snapshot.sync;
+  const sync =
+    service.sync;
 
   setText(
     serviceState,
-    service.state,
+    service.service.state,
   );
 
   setText(
     serviceDetail,
-    service.loaded
-      ? service.pid !== null
-        ? `PID ${service.pid}`
+    service.service.loaded
+      ? service.service.pid !==
+        null
+        ? `PID ${service.service.pid}`
         : 'Loaded'
       : 'LaunchAgent not loaded',
   );
@@ -158,7 +164,8 @@ function renderStatus(
   setText(
     serverDetail,
     server.configured
-      ? server.latencyMs !== null
+      ? server.latencyMs !==
+        null
         ? `${server.latencyMs} ms`
         : server.error ??
           'Checking health...'
@@ -174,8 +181,10 @@ function renderStatus(
 
   setText(
     syncDetail,
-    sync.lastRun !== null
-      ? sync.lastRun.completed === true
+    sync.lastRun !==
+      null
+      ? sync.lastRun.completed ===
+        true
         ? 'Last run completed'
         : sync.lastRun.lastError ??
           'Last run incomplete'
@@ -184,32 +193,28 @@ function renderStatus(
 
   setText(
     serviceLabel,
-    service.label,
+    service.service.label,
   );
 
   if (
     lastRun !== null
   ) {
-    if (
+    lastRun.textContent =
       sync.lastRun === null
-    ) {
-      lastRun.textContent =
-        'No sync run yet.';
-    } else {
-      lastRun.textContent =
-        JSON.stringify(
-          sync.lastRun,
-          null,
-          2,
-        );
-    }
+        ? 'No sync run yet.'
+        : JSON.stringify(
+            sync.lastRun,
+            null,
+            2,
+          );
   }
 
   if (
     cursor !== null
   ) {
     cursor.textContent =
-      sync.cursor === null
+      sync.cursor ===
+      null
         ? 'No cursor available.'
         : JSON.stringify(
             sync.cursor,
@@ -219,44 +224,49 @@ function renderStatus(
   }
 
   const running =
-    service.state ===
+    service.service.state ===
     'running';
 
   const installed =
-    service.loaded ||
-    service.state !==
+    service.service.loaded ||
+    service.service.state !==
       'unknown';
 
   if (
-    startButton !== null
+    startButton !==
+    null
   ) {
     startButton.disabled =
       running;
   }
 
   if (
-    stopButton !== null
+    stopButton !==
+    null
   ) {
     stopButton.disabled =
       !running;
   }
 
   if (
-    restartButton !== null
+    restartButton !==
+    null
   ) {
     restartButton.disabled =
       !installed;
   }
 }
 
-async function refreshStatus(): Promise<void> {
+async function refreshApplicationState():
+  Promise<void> {
   setError(null);
 
   try {
     const snapshot =
-      await window.djSync.serviceStatus();
+      await window.djSync
+        .applicationStatus();
 
-    renderStatus(
+    renderApplicationState(
       snapshot,
     );
 
@@ -278,14 +288,16 @@ async function refreshStatus(): Promise<void> {
   }
 }
 
-async function startService(): Promise<void> {
+async function startService():
+  Promise<void> {
   setError(null);
 
   try {
     const snapshot =
-      await window.djSync.serviceStart();
+      await window.djSync
+        .serviceStart();
 
-    renderStatus(
+    renderApplicationState(
       snapshot,
     );
   } catch (error) {
@@ -295,18 +307,20 @@ async function startService(): Promise<void> {
         : String(error),
     );
 
-    await refreshStatus();
+    await refreshApplicationState();
   }
 }
 
-async function stopService(): Promise<void> {
+async function stopService():
+  Promise<void> {
   setError(null);
 
   try {
     const snapshot =
-      await window.djSync.serviceStop();
+      await window.djSync
+        .serviceStop();
 
-    renderStatus(
+    renderApplicationState(
       snapshot,
     );
   } catch (error) {
@@ -316,18 +330,20 @@ async function stopService(): Promise<void> {
         : String(error),
     );
 
-    await refreshStatus();
+    await refreshApplicationState();
   }
 }
 
-async function restartService(): Promise<void> {
+async function restartService():
+  Promise<void> {
   setError(null);
 
   try {
     const snapshot =
-      await window.djSync.serviceRestart();
+      await window.djSync
+        .serviceRestart();
 
-    renderStatus(
+    renderApplicationState(
       snapshot,
     );
   } catch (error) {
@@ -337,11 +353,12 @@ async function restartService(): Promise<void> {
         : String(error),
     );
 
-    await refreshStatus();
+    await refreshApplicationState();
   }
 }
 
-async function loadAppInfo(): Promise<void> {
+async function loadAppInfo():
+  Promise<void> {
   if (
     appInfo === null
   ) {
@@ -350,7 +367,8 @@ async function loadAppInfo(): Promise<void> {
 
   try {
     const info =
-      await window.djSync.getAppInfo();
+      await window.djSync
+        .getAppInfo();
 
     appInfo.textContent =
       JSON.stringify(
@@ -366,15 +384,17 @@ async function loadAppInfo(): Promise<void> {
   }
 }
 
-function registerEvents(): () => void {
+function registerEvents():
+  () => void {
   const unsubscribe =
-    window.djSync.onServiceUpdate(
-      (snapshot) => {
-        renderStatus(
-          snapshot,
-        );
-      },
-    );
+    window.djSync
+      .onApplicationUpdate(
+        (snapshot) => {
+          renderApplicationState(
+            snapshot,
+          );
+        },
+      );
 
   startButton?.addEventListener(
     'click',
@@ -400,14 +420,15 @@ function registerEvents(): () => void {
   refreshButton?.addEventListener(
     'click',
     () => {
-      void refreshStatus();
+      void refreshApplicationState();
     },
   );
 
   return unsubscribe;
 }
 
-async function initialize(): Promise<void> {
+async function initialize():
+  Promise<void> {
   const unsubscribe =
     registerEvents();
 
@@ -421,7 +442,7 @@ async function initialize(): Promise<void> {
 
   await Promise.all([
     loadAppInfo(),
-    refreshStatus(),
+    refreshApplicationState(),
   ]);
 }
 

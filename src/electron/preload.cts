@@ -13,9 +13,9 @@ contextBridge.exposeInMainWorld(
         'app:get-info',
       ),
 
-    serviceStatus: () =>
+    applicationStatus: () =>
       ipcRenderer.invoke(
-        'service:status',
+        'application:status',
       ),
 
     serviceStart: () =>
@@ -33,7 +33,7 @@ contextBridge.exposeInMainWorld(
         'service:restart',
       ),
 
-    onServiceUpdate: (
+    onApplicationUpdate: (
       listener: (
         snapshot: unknown,
       ) => void,
@@ -46,13 +46,13 @@ contextBridge.exposeInMainWorld(
       };
 
       ipcRenderer.on(
-        'service:update',
+        'application:update',
         handler,
       );
 
       return () => {
         ipcRenderer.removeListener(
-          'service:update',
+          'application:update',
           handler,
         );
       };

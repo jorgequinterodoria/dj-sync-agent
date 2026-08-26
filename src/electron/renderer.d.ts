@@ -90,20 +90,31 @@ interface SyncStatusData {
   };
 }
 
+interface DJSyncApplicationSnapshot {
+  schemaVersion: 1;
+  generatedAt: string;
+  service: SyncStatusData;
+}
+
 interface DJSyncApi {
   getAppInfo(): Promise<AppInfo>;
 
-  serviceStatus(): Promise<SyncStatusData>;
+  applicationStatus():
+    Promise<DJSyncApplicationSnapshot>;
 
-  serviceStart(): Promise<SyncStatusData>;
+  serviceStart():
+    Promise<DJSyncApplicationSnapshot>;
 
-  serviceStop(): Promise<SyncStatusData>;
+  serviceStop():
+    Promise<DJSyncApplicationSnapshot>;
 
-  serviceRestart(): Promise<SyncStatusData>;
+  serviceRestart():
+    Promise<DJSyncApplicationSnapshot>;
 
-  onServiceUpdate(
+  onApplicationUpdate(
     listener: (
-      snapshot: SyncStatusData,
+      snapshot:
+        DJSyncApplicationSnapshot,
     ) => void,
   ): () => void;
 }
