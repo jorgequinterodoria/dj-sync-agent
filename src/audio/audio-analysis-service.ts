@@ -58,14 +58,9 @@ export class AudioAnalysisService {
     persistence: AudioAnalysisPersistenceResult;
   }> {
     const normalizedTrackId = trackId.trim();
-    const normalizedPath = filePath.trim();
 
     if (!normalizedTrackId) {
       throw new Error('Track ID is required.');
-    }
-
-    if (!normalizedPath) {
-      throw new Error('Audio file path is required.');
     }
 
     if (!this.persistence) {
@@ -80,9 +75,14 @@ export class AudioAnalysisService {
       );
     }
 
-    const asset = await this.verifier(normalizedPath);
+    const normalizedPath = filePath.trim();
 
-    const analysis = await this.analyzer(normalizedPath);
+    if (!normalizedPath) {
+      throw new Error('Audio file path is required.');
+    }
+
+    const asset = await this.verifier(normalizedPath);
+    const analysis = await this.analyze(normalizedPath);
 
     const persistence = await this.persistence.persist(
       normalizedTrackId,
