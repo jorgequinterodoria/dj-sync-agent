@@ -31,206 +31,554 @@
   </head>
 
   <body>
-    <main>
-      <header class="app-header">
-        <div>
-          <h1>DJ Sync Agent</h1>
-
-          <p
-            id="connection-status"
-            class="subtitle"
-          >
-            Connecting to Electron main process...
-          </p>
-        </div>
-
-        <button
-          id="refresh-service"
-          class="secondary-button"
-          type="button"
-        >
-          Refresh
-        </button>
-      </header>
-
-      <section class="grid overview-grid">
-        <article class="card status-card">
-          <span class="eyebrow">
-            SERVICE
-          </span>
-
-          <strong
-            id="service-state"
-            class="metric"
-          >
-            Unknown
-          </strong>
-
-          <span
-            id="service-detail"
-            class="muted"
-          >
-            Checking...
-          </span>
-        </article>
-
-        <article class="card status-card">
-          <span class="eyebrow">
-            DATABASE
-          </span>
-
-          <strong
-            id="database-state"
-            class="metric"
-          >
-            Unknown
-          </strong>
-
-          <span
-            id="database-detail"
-            class="muted"
-          >
-            Checking...
-          </span>
-        </article>
-
-        <article class="card status-card">
-          <span class="eyebrow">
-            SERVER
-          </span>
-
-          <strong
-            id="server-state"
-            class="metric"
-          >
-            Unknown
-          </strong>
-
-          <span
-            id="server-detail"
-            class="muted"
-          >
-            Checking...
-          </span>
-        </article>
-
-        <article class="card status-card">
-          <span class="eyebrow">
-            SYNC
-          </span>
-
-          <strong
-            id="sync-state"
-            class="metric"
-          >
-            Unknown
-          </strong>
-
-          <span
-            id="sync-detail"
-            class="muted"
-          >
-            Checking...
-          </span>
-        </article>
-      </section>
-
-      <section class="card">
-        <div class="section-header">
-          <div>
-            <span class="eyebrow">
-              CONTROL
-            </span>
-
-            <h2>Sync Service</h2>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">
+            DJ
           </div>
 
+          <div>
+            <h1>DJ Sync Agent</h1>
+
+            <p>
+              Local sync control center
+            </p>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
           <span
-            id="service-label"
-            class="muted"
-          ></span>
-        </div>
-
-        <p
-          id="service-error"
-          class="error"
-          aria-live="polite"
-        ></p>
-
-        <div class="actions">
-          <button
-            id="start-service"
-            type="button"
+            id="connection-pill"
+            class="connection-pill connection-pending"
           >
-            Start
-          </button>
+            <span class="status-dot"></span>
+            <span id="connection-status">
+              Connecting...
+            </span>
+          </span>
 
           <button
-            id="restart-service"
+            id="refresh-service"
+            class="icon-button"
             type="button"
+            aria-label="Refresh application state"
           >
-            Restart
-          </button>
-
-          <button
-            id="stop-service"
-            type="button"
-          >
-            Stop
+            ↻
           </button>
         </div>
-      </section>
+      </header>
 
-      <section class="grid content-grid">
-        <section class="card">
-          <div class="section-header">
-            <div>
+      <main class="dashboard">
+        <section
+          class="overview-grid"
+          aria-label="System overview"
+        >
+          <article
+            class="status-card"
+            data-status="unknown"
+            id="service-card"
+          >
+            <div class="card-topline">
+              <span class="eyebrow">
+                SERVICE
+              </span>
+
+              <span
+                id="service-badge"
+                class="state-badge state-unknown"
+              >
+                Unknown
+              </span>
+            </div>
+
+            <div
+              id="service-state"
+              class="status-value"
+            >
+              Unknown
+            </div>
+
+            <div
+              id="service-detail"
+              class="status-detail"
+            >
+              Checking service...
+            </div>
+          </article>
+
+          <article
+            class="status-card"
+            data-status="unknown"
+            id="database-card"
+          >
+            <div class="card-topline">
+              <span class="eyebrow">
+                DATABASE
+              </span>
+
+              <span
+                id="database-badge"
+                class="state-badge state-unknown"
+              >
+                Unknown
+              </span>
+            </div>
+
+            <div
+              id="database-state"
+              class="status-value"
+            >
+              Unknown
+            </div>
+
+            <div
+              id="database-detail"
+              class="status-detail"
+            >
+              Checking database...
+            </div>
+          </article>
+
+          <article
+            class="status-card"
+            data-status="unknown"
+            id="server-card"
+          >
+            <div class="card-topline">
+              <span class="eyebrow">
+                SERVER
+              </span>
+
+              <span
+                id="server-badge"
+                class="state-badge state-unknown"
+              >
+                Unknown
+              </span>
+            </div>
+
+            <div
+              id="server-state"
+              class="status-value"
+            >
+              Unknown
+            </div>
+
+            <div
+              id="server-detail"
+              class="status-detail"
+            >
+              Checking server...
+            </div>
+          </article>
+
+          <article
+            class="status-card"
+            data-status="unknown"
+            id="sync-card"
+          >
+            <div class="card-topline">
               <span class="eyebrow">
                 SYNC
               </span>
 
-              <h2>Last Run</h2>
+              <span
+                id="sync-badge"
+                class="state-badge state-unknown"
+              >
+                Unknown
+              </span>
+            </div>
+
+            <div
+              id="sync-state"
+              class="status-value"
+            >
+              Unknown
+            </div>
+
+            <div
+              id="sync-detail"
+              class="status-detail"
+            >
+              Waiting for state...
+            </div>
+          </article>
+        </section>
+
+        <section
+          class="panel service-panel"
+          aria-labelledby="service-heading"
+        >
+          <div class="panel-header">
+            <div>
+              <div class="eyebrow">
+                CONTROL
+              </div>
+
+              <h2 id="service-heading">
+                Sync Service
+              </h2>
+
+              <p
+                id="service-label"
+                class="panel-subtitle"
+              >
+                com.dj-sync-agent.sync-watch
+              </p>
+            </div>
+
+            <div
+              id="service-pid"
+              class="meta-pill"
+            >
+              PID —
             </div>
           </div>
 
-          <pre
-            id="last-run"
-          >No sync run yet.</pre>
-        </section>
-
-        <section class="card">
-          <div class="section-header">
-            <div>
-              <span class="eyebrow">
-                CURSOR
+          <div class="service-grid">
+            <div class="service-stat">
+              <span>
+                State
               </span>
 
-              <h2>Current Cursor</h2>
+              <strong
+                id="service-control-state"
+              >
+                Unknown
+              </strong>
+            </div>
+
+            <div class="service-stat">
+              <span>
+                Loaded
+              </span>
+
+              <strong
+                id="service-loaded"
+              >
+                —
+              </strong>
+            </div>
+
+            <div class="service-stat">
+              <span>
+                Database
+              </span>
+
+              <strong
+                id="service-database"
+              >
+                —
+              </strong>
+            </div>
+
+            <div class="service-stat">
+              <span>
+                Last update
+              </span>
+
+              <strong
+                id="service-updated"
+              >
+                —
+              </strong>
             </div>
           </div>
 
-          <pre
-            id="cursor"
-          >No cursor available.</pre>
-        </section>
-      </section>
+          <div
+            id="service-error"
+            class="inline-error"
+            aria-live="polite"
+          ></div>
 
-      <section class="card">
-        <div class="section-header">
-          <div>
-            <span class="eyebrow">
-              APPLICATION
-            </span>
+          <div class="service-actions">
+            <button
+              id="start-service"
+              class="button button-primary"
+              type="button"
+            >
+              Start
+            </button>
 
-            <h2>Electron</h2>
+            <button
+              id="restart-service"
+              class="button button-secondary"
+              type="button"
+            >
+              Restart
+            </button>
+
+            <button
+              id="stop-service"
+              class="button button-danger"
+              type="button"
+            >
+              Stop
+            </button>
           </div>
-        </div>
+        </section>
 
-        <pre
-          id="app-info"
-        >Loading application information...</pre>
-      </section>
-    </main>
+        <section class="detail-grid">
+          <article
+            class="panel"
+            aria-labelledby="last-run-heading"
+          >
+            <div class="panel-header">
+              <div>
+                <div class="eyebrow">
+                  SYNC
+                </div>
+
+                <h2 id="last-run-heading">
+                  Last Run
+                </h2>
+              </div>
+
+              <span
+                id="last-run-state"
+                class="state-badge state-unknown"
+              >
+                Unknown
+              </span>
+            </div>
+
+            <div class="metric-grid">
+              <div class="metric-card">
+                <span>
+                  Processed
+                </span>
+
+                <strong id="last-run-processed">
+                  —
+                </strong>
+              </div>
+
+              <div class="metric-card">
+                <span>
+                  Batches
+                </span>
+
+                <strong id="last-run-batches">
+                  —
+                </strong>
+              </div>
+
+              <div class="metric-card">
+                <span>
+                  Duration
+                </span>
+
+                <strong id="last-run-duration">
+                  —
+                </strong>
+              </div>
+
+              <div class="metric-card">
+                <span>
+                  Started
+                </span>
+
+                <strong id="last-run-started">
+                  —
+                </strong>
+              </div>
+            </div>
+
+            <div class="timeline-row">
+              <span>
+                Finished
+              </span>
+
+              <strong id="last-run-finished">
+                —
+              </strong>
+            </div>
+
+            <div
+              id="last-run-error"
+              class="inline-error"
+              aria-live="polite"
+            ></div>
+          </article>
+
+          <article
+            class="panel"
+            aria-labelledby="cursor-heading"
+          >
+            <div class="panel-header">
+              <div>
+                <div class="eyebrow">
+                  CURSOR
+                </div>
+
+                <h2 id="cursor-heading">
+                  Current Cursor
+                </h2>
+              </div>
+            </div>
+
+            <div class="cursor-main">
+              <div>
+                <span>
+                  RB Local USN
+                </span>
+
+                <strong id="cursor-usn">
+                  —
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Track ID
+                </span>
+
+                <strong
+                  id="cursor-id"
+                  class="cursor-id"
+                >
+                  —
+                </strong>
+              </div>
+            </div>
+
+            <div class="cursor-meta">
+              <div>
+                <span>
+                  Sync mode
+                </span>
+
+                <strong id="cursor-mode">
+                  —
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Session
+                </span>
+
+                <strong
+                  id="cursor-session"
+                  class="truncate"
+                >
+                  —
+                </strong>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="lower-grid">
+          <article
+            class="panel"
+            aria-labelledby="activity-heading"
+          >
+            <div class="panel-header">
+              <div>
+                <div class="eyebrow">
+                  ACTIVITY
+                </div>
+
+                <h2 id="activity-heading">
+                  Recent Activity
+                </h2>
+              </div>
+            </div>
+
+            <div
+              id="activity-list"
+              class="activity-list"
+            >
+              <div class="empty-state">
+                Waiting for application state...
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="panel"
+            aria-labelledby="application-heading"
+          >
+            <div class="panel-header">
+              <div>
+                <div class="eyebrow">
+                  APPLICATION
+                </div>
+
+                <h2 id="application-heading">
+                  Environment
+                </h2>
+              </div>
+            </div>
+
+            <div class="environment-grid">
+              <div>
+                <span>
+                  Electron
+                </span>
+
+                <strong id="app-electron">
+                  —
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Node
+                </span>
+
+                <strong id="app-node">
+                  —
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Platform
+                </span>
+
+                <strong id="app-platform">
+                  —
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Architecture
+                </span>
+
+                <strong id="app-arch">
+                  —
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Version
+                </span>
+
+                <strong id="app-version">
+                  —
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Database
+                </span>
+
+                <strong id="app-database">
+                  —
+                </strong>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
 
     <script
       type="module"
