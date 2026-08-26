@@ -1,39 +1,113 @@
-export {};
+interface AppInfo {
+  name: string;
+  version: string;
+  electronVersion: string;
+  nodeVersion: string;
+  platform: NodeJS.Platform;
+  arch: string;
+}
 
-declare global {
-  interface AppInfo {
-    name: string;
-    version: string;
-    electronVersion: string;
-    nodeVersion: string;
-    platform: NodeJS.Platform;
-    arch: string;
-  }
+interface SyncStatusData {
+  schemaVersion: number;
+  generatedAt: string;
 
-  interface RuntimeSnapshot {
-    status: string;
-    startedAt: string | null;
-    lastRun: unknown;
-    lastError: string | null;
-  }
+  service: {
+    label: string;
+    loaded: boolean;
+    state:
+      | 'running'
+      | 'stopped'
+      | 'unknown';
+    pid: number | null;
+  };
 
-  interface DJSyncApi {
-    getAppInfo(): Promise<AppInfo>;
+  database: {
+    path: string;
+    exists: boolean;
+  };
 
-    runtimeStart(): Promise<RuntimeSnapshot>;
+  sync: {
+    mode:
+      | 'watch'
+      | 'initial'
+      | 'manual'
+      | null;
 
-    runtimeStop(): Promise<RuntimeSnapshot>;
+    status:
+      | 'running'
+      | 'completed'
+      | 'paused'
+      | 'failed'
+      | null;
 
-    runtimeStatus(): Promise<RuntimeSnapshot>;
+    sessionId: string | null;
 
-    onRuntimeUpdate(
-      listener: (
-        snapshot: RuntimeSnapshot,
-      ) => void,
-    ): () => void;
-  }
+    cursor: {
+      rbLocalUsn: number;
+      id: string;
+    } | null;
 
-  interface Window {
-    djSync: DJSyncApi;
-  }
+    totals: {
+      runs: number;
+      batchesProcessed: number;
+      scanned: number;
+      processed: number;
+    };
+
+    lastRun: {
+      startedAt: string | null;
+      finishedAt: string | null;
+      elapsedMs: number | null;
+      batchesProcessed: number;
+      scanned: number;
+      processed: number;
+      completed: boolean | null;
+
+      cursorBefore: {
+        rbLocalUsn: number;
+        id: string;
+      } | null;
+
+      cursorAfter: {
+        rbLocalUsn: number;
+        id: string;
+      } | null;
+
+      lastError: string | null;
+    } | null;
+  };
+
+  server: {
+    apiUrl: string;
+    configured: boolean;
+    reachable: boolean;
+    healthy: boolean;
+    latencyMs: number | null;
+    version: string | null;
+    region: string | null;
+    deploymentId: string | null;
+    error: string | null;
+  };
+}
+
+interface DJSyncApi {
+  getAppInfo(): Promise<AppInfo>;
+
+  serviceStatus(): Promise<SyncStatusData>;
+
+  serviceStart(): Promise<SyncStatusData>;
+
+  serviceStop(): Promise<SyncStatusData>;
+
+  serviceRestart(): Promise<SyncStatusData>;
+
+  onServiceUpdate(
+    listener: (
+      snapshot: SyncStatusData,
+    ) => void,
+  ): () => void;
+}
+
+interface Window {
+  djSync: DJSyncApi;
 }

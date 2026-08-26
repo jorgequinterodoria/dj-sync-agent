@@ -3,19 +3,64 @@ const connectionStatus =
     '#connection-status',
   );
 
-const runtimeStatus =
+const serviceState =
   document.querySelector<HTMLElement>(
-    '#runtime-status',
+    '#service-state',
   );
 
-const runtimeSnapshot =
+const serviceDetail =
+  document.querySelector<HTMLElement>(
+    '#service-detail',
+  );
+
+const databaseState =
+  document.querySelector<HTMLElement>(
+    '#database-state',
+  );
+
+const databaseDetail =
+  document.querySelector<HTMLElement>(
+    '#database-detail',
+  );
+
+const serverState =
+  document.querySelector<HTMLElement>(
+    '#server-state',
+  );
+
+const serverDetail =
+  document.querySelector<HTMLElement>(
+    '#server-detail',
+  );
+
+const syncState =
+  document.querySelector<HTMLElement>(
+    '#sync-state',
+  );
+
+const syncDetail =
+  document.querySelector<HTMLElement>(
+    '#sync-detail',
+  );
+
+const serviceLabel =
+  document.querySelector<HTMLElement>(
+    '#service-label',
+  );
+
+const serviceError =
+  document.querySelector<HTMLElement>(
+    '#service-error',
+  );
+
+const lastRun =
   document.querySelector<HTMLPreElement>(
-    '#runtime-snapshot',
+    '#last-run',
   );
 
-const runtimeError =
-  document.querySelector<HTMLElement>(
-    '#runtime-error',
+const cursor =
+  document.querySelector<HTMLPreElement>(
+    '#cursor',
   );
 
 const appInfo =
@@ -25,78 +70,281 @@ const appInfo =
 
 const startButton =
   document.querySelector<HTMLButtonElement>(
-    '#start-runtime',
+    '#start-service',
+  );
+
+const restartButton =
+  document.querySelector<HTMLButtonElement>(
+    '#restart-service',
   );
 
 const stopButton =
   document.querySelector<HTMLButtonElement>(
-    '#stop-runtime',
+    '#stop-service',
   );
 
-function setConnectionStatus(
-  message: string,
+const refreshButton =
+  document.querySelector<HTMLButtonElement>(
+    '#refresh-service',
+  );
+
+function setText(
+  element: HTMLElement | null,
+  value: string,
 ): void {
-  if (connectionStatus !== null) {
-    connectionStatus.textContent =
-      message;
+  if (
+    element !== null
+  ) {
+    element.textContent =
+      value;
   }
 }
 
-function renderSnapshot(
-  snapshot: RuntimeSnapshot,
+function setError(
+  message: string | null,
 ): void {
-  if (runtimeStatus !== null) {
-    runtimeStatus.textContent =
-      snapshot.status;
-  }
+  setText(
+    serviceError,
+    message ?? '',
+  );
+}
 
-  if (runtimeError !== null) {
-    const error = snapshot.lastError;
+function renderStatus(
+  snapshot: SyncStatusData,
+): void {
+  const service = snapshot.service;
 
-    runtimeError.textContent =
-      typeof error === 'string'
-        ? error
-        : '';
-  }
+  const database = snapshot.database;
 
-  if (runtimeSnapshot !== null) {
-    const lastRun =
-      snapshot.lastRun;
+  const server = snapshot.server;
 
+  const sync = snapshot.sync;
+
+  setText(
+    serviceState,
+    service.state,
+  );
+
+  setText(
+    serviceDetail,
+    service.loaded
+      ? service.pid !== null
+        ? `PID ${service.pid}`
+        : 'Loaded'
+      : 'LaunchAgent not loaded',
+  );
+
+  setText(
+    databaseState,
+    database.exists
+      ? 'Available'
+      : 'Missing',
+  );
+
+  setText(
+    databaseDetail,
+    database.path,
+  );
+
+  setText(
+    serverState,
+    server.healthy
+      ? 'Healthy'
+      : server.configured
+        ? 'Unhealthy'
+        : 'Not configured',
+  );
+
+  setText(
+    serverDetail,
+    server.configured
+      ? server.latencyMs !== null
+        ? `${server.latencyMs} ms`
+        : server.error ??
+          'Checking health...'
+      : 'API credentials unavailable',
+  );
+
+  setText(
+    syncState,
+    sync.status ??
+      sync.mode ??
+      'Idle',
+  );
+
+  setText(
+    syncDetail,
+    sync.lastRun !== null
+      ? sync.lastRun.completed === true
+        ? 'Last run completed'
+        : sync.lastRun.lastError ??
+          'Last run incomplete'
+      : 'No sync run recorded',
+  );
+
+  setText(
+    serviceLabel,
+    service.label,
+  );
+
+  if (
+    lastRun !== null
+  ) {
     if (
-      lastRun === null ||
-      lastRun === undefined
+      sync.lastRun === null
     ) {
-      runtimeSnapshot.textContent =
+      lastRun.textContent =
         'No sync run yet.';
     } else {
-      runtimeSnapshot.textContent =
+      lastRun.textContent =
         JSON.stringify(
-          lastRun,
+          sync.lastRun,
           null,
           2,
         );
     }
   }
 
-  const status =
-    snapshot.status;
-
-  if (startButton !== null) {
-    startButton.disabled =
-      status === 'starting' ||
-      status === 'running';
+  if (
+    cursor !== null
+  ) {
+    cursor.textContent =
+      sync.cursor === null
+        ? 'No cursor available.'
+        : JSON.stringify(
+            sync.cursor,
+            null,
+            2,
+          );
   }
 
-  if (stopButton !== null) {
+  const running =
+    service.state ===
+    'running';
+
+  const installed =
+    service.loaded ||
+    service.state !==
+      'unknown';
+
+  if (
+    startButton !== null
+  ) {
+    startButton.disabled =
+      running;
+  }
+
+  if (
+    stopButton !== null
+  ) {
     stopButton.disabled =
-      status === 'stopping' ||
-      status === 'stopped';
+      !running;
+  }
+
+  if (
+    restartButton !== null
+  ) {
+    restartButton.disabled =
+      !installed;
+  }
+}
+
+async function refreshStatus(): Promise<void> {
+  setError(null);
+
+  try {
+    const snapshot =
+      await window.djSync.serviceStatus();
+
+    renderStatus(
+      snapshot,
+    );
+
+    setText(
+      connectionStatus,
+      'Connected to Electron main process',
+    );
+  } catch (error) {
+    setText(
+      connectionStatus,
+      'Failed to connect to Electron main process',
+    );
+
+    setError(
+      error instanceof Error
+        ? error.message
+        : String(error),
+    );
+  }
+}
+
+async function startService(): Promise<void> {
+  setError(null);
+
+  try {
+    const snapshot =
+      await window.djSync.serviceStart();
+
+    renderStatus(
+      snapshot,
+    );
+  } catch (error) {
+    setError(
+      error instanceof Error
+        ? error.message
+        : String(error),
+    );
+
+    await refreshStatus();
+  }
+}
+
+async function stopService(): Promise<void> {
+  setError(null);
+
+  try {
+    const snapshot =
+      await window.djSync.serviceStop();
+
+    renderStatus(
+      snapshot,
+    );
+  } catch (error) {
+    setError(
+      error instanceof Error
+        ? error.message
+        : String(error),
+    );
+
+    await refreshStatus();
+  }
+}
+
+async function restartService(): Promise<void> {
+  setError(null);
+
+  try {
+    const snapshot =
+      await window.djSync.serviceRestart();
+
+    renderStatus(
+      snapshot,
+    );
+  } catch (error) {
+    setError(
+      error instanceof Error
+        ? error.message
+        : String(error),
+    );
+
+    await refreshStatus();
   }
 }
 
 async function loadAppInfo(): Promise<void> {
-  if (appInfo === null) {
+  if (
+    appInfo === null
+  ) {
     return;
   }
 
@@ -118,100 +366,71 @@ async function loadAppInfo(): Promise<void> {
   }
 }
 
-async function loadInitialRuntimeStatus(): Promise<void> {
-  try {
-    const snapshot =
-      await window.djSync.runtimeStatus();
-
-    renderSnapshot(snapshot);
-
-    setConnectionStatus(
-      'Connected to Electron main process',
-    );
-  } catch (error) {
-    setConnectionStatus(
-      'Failed to connect to Electron main process',
+function registerEvents(): () => void {
+  const unsubscribe =
+    window.djSync.onServiceUpdate(
+      (snapshot) => {
+        renderStatus(
+          snapshot,
+        );
+      },
     );
 
-    if (runtimeError !== null) {
-      runtimeError.textContent =
-        error instanceof Error
-          ? error.message
-          : String(error);
-    }
-  }
-}
-
-async function startRuntime(): Promise<void> {
-  if (startButton !== null) {
-    startButton.disabled = true;
-  }
-
-  try {
-    const snapshot =
-      await window.djSync.runtimeStart();
-
-    renderSnapshot(snapshot);
-  } catch (error) {
-    if (runtimeError !== null) {
-      runtimeError.textContent =
-        error instanceof Error
-          ? error.message
-          : String(error);
-    }
-  }
-}
-
-async function stopRuntime(): Promise<void> {
-  if (stopButton !== null) {
-    stopButton.disabled = true;
-  }
-
-  try {
-    const snapshot =
-      await window.djSync.runtimeStop();
-
-    renderSnapshot(snapshot);
-  } catch (error) {
-    if (runtimeError !== null) {
-      runtimeError.textContent =
-        error instanceof Error
-          ? error.message
-          : String(error);
-    }
-  }
-}
-
-function registerEventHandlers(): void {
   startButton?.addEventListener(
     'click',
     () => {
-      void startRuntime();
+      void startService();
     },
   );
 
   stopButton?.addEventListener(
     'click',
     () => {
-      void stopRuntime();
-    },
-  );
-}
-
-function initialise(): void {
-  registerEventHandlers();
-
-  window.djSync.onRuntimeUpdate(
-    (snapshot) => {
-      renderSnapshot(snapshot);
-      setConnectionStatus(
-        'Connected to Electron main process',
-      );
+      void stopService();
     },
   );
 
-  void loadAppInfo();
-  void loadInitialRuntimeStatus();
+  restartButton?.addEventListener(
+    'click',
+    () => {
+      void restartService();
+    },
+  );
+
+  refreshButton?.addEventListener(
+    'click',
+    () => {
+      void refreshStatus();
+    },
+  );
+
+  return unsubscribe;
 }
 
-initialise();
+async function initialize(): Promise<void> {
+  const unsubscribe =
+    registerEvents();
+
+  window.addEventListener(
+    'beforeunload',
+    () => {
+      unsubscribe();
+    },
+    { once: true },
+  );
+
+  await Promise.all([
+    loadAppInfo(),
+    refreshStatus(),
+  ]);
+}
+
+void initialize().catch(
+  (error) => {
+    setError(
+      error instanceof Error
+        ? error.message
+        : String(error),
+    );
+  },
+);

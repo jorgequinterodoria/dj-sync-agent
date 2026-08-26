@@ -4,11 +4,19 @@ import {
   ipcMain,
 } from 'electron';
 import { fileURLToPath } from 'node:url';
-import { createDJSyncRuntime } from '../runtime/dj-sync-runtime.js';
+import { createDJSyncService } from '../runtime/dj-sync-service.js';
 
 let mainWindow: BrowserWindow | null = null;
 
-const runtime = createDJSyncRuntime();
+const service =
+  createDJSyncService();
+
+let statusTimer:
+  ReturnType<typeof setInterval> | null =
+  null;
+
+let statusRefreshInFlight =
+  false;
 
 interface AppInfo {
   name: string;
@@ -19,20 +27,61 @@ interface AppInfo {
   arch: string;
 }
 
-function registerRuntimeEvents(): void {
-  runtime.subscribe((snapshot) => {
-    if (
-      mainWindow === null ||
-      mainWindow.isDestroyed()
-    ) {
-      return;
-    }
+async function publishServiceStatus(): Promise<void> {
+  if (
+    mainWindow === null ||
+    mainWindow.isDestroyed() ||
+    statusRefreshInFlight
+  ) {
+    return;
+  }
 
-    mainWindow.webContents.send(
-      'runtime:update',
-      snapshot,
-    );
-  });
+  statusRefreshInFlight = true;
+
+  try {
+    const snapshot =
+      await service.status();
+
+    if (
+      mainWindow !== null &&
+      !mainWindow.isDestroyed()
+    ) {
+      mainWindow.webContents.send(
+        'service:update',
+        snapshot,
+      );
+    }
+  } finally {
+    statusRefreshInFlight =
+      false;
+  }
+}
+
+function startStatusPolling(): void {
+  if (
+    statusTimer !== null
+  ) {
+    return;
+  }
+
+  statusTimer =
+    setInterval(() => {
+      void publishServiceStatus();
+    }, 5000);
+}
+
+function stopStatusPolling(): void {
+  if (
+    statusTimer === null
+  ) {
+    return;
+  }
+
+  clearInterval(
+    statusTimer,
+  );
+
+  statusTimer = null;
 }
 
 function registerIpcHandlers(): void {
@@ -53,23 +102,45 @@ function registerIpcHandlers(): void {
   );
 
   ipcMain.handle(
-    'runtime:start',
+    'service:status',
     async () => {
-      return runtime.start();
+      return service.status();
     },
   );
 
   ipcMain.handle(
-    'runtime:stop',
+    'service:start',
     async () => {
-      return runtime.stop();
+      const snapshot =
+        await service.start();
+
+      void publishServiceStatus();
+
+      return snapshot;
     },
   );
 
   ipcMain.handle(
-    'runtime:status',
-    () => {
-      return runtime.status();
+    'service:stop',
+    async () => {
+      const snapshot =
+        await service.stop();
+
+      void publishServiceStatus();
+
+      return snapshot;
+    },
+  );
+
+  ipcMain.handle(
+    'service:restart',
+    async () => {
+      const snapshot =
+        await service.restart();
+
+      void publishServiceStatus();
+
+      return snapshot;
     },
   );
 }
@@ -84,32 +155,36 @@ function resolveRendererPath(): string {
 }
 
 function createMainWindow(): void {
-  const preloadPath = fileURLToPath(
-    new URL(
-      './preload.cjs',
-      import.meta.url,
-    ),
-  );
+  const preloadPath =
+    fileURLToPath(
+      new URL(
+        './preload.cjs',
+        import.meta.url,
+      ),
+    );
 
-  mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 1100,
-    minHeight: 700,
-    show: false,
+  mainWindow =
+    new BrowserWindow({
+      width: 1440,
+      height: 900,
+      minWidth: 1100,
+      minHeight: 700,
+      show: false,
 
-    webPreferences: {
-      preload: preloadPath,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-  });
+      webPreferences: {
+        preload: preloadPath,
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      },
+    });
 
   mainWindow.once(
     'ready-to-show',
     () => {
       mainWindow?.show();
+
+      void publishServiceStatus();
     },
   );
 
@@ -126,19 +201,16 @@ function createMainWindow(): void {
 }
 
 async function shutdown(): Promise<void> {
-  try {
-    await runtime.stop();
-  } catch {
-    // Preserve application shutdown.
-  }
+  stopStatusPolling();
 }
 
-let shuttingDown = false;
+let shuttingDown =
+  false;
 
 app.whenReady().then(() => {
-  registerRuntimeEvents();
   registerIpcHandlers();
   createMainWindow();
+  startStatusPolling();
 
   app.on(
     'activate',
@@ -160,26 +232,24 @@ app.on(
       return;
     }
 
-    if (
-      runtime.status().status ===
-      'stopped'
-    ) {
-      return;
-    }
-
     shuttingDown = true;
+
     event.preventDefault();
 
-    void shutdown().finally(() => {
-      app.quit();
-    });
+    void shutdown()
+      .finally(() => {
+        app.quit();
+      });
   },
 );
 
 app.on(
   'window-all-closed',
   () => {
-    if (process.platform !== 'darwin') {
+    if (
+      process.platform !==
+      'darwin'
+    ) {
       app.quit();
     }
   },

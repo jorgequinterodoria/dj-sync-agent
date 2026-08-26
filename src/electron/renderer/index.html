@@ -19,7 +19,6 @@
         font-src 'self';
         object-src 'none';
         base-uri 'none';
-        frame-ancestors 'none';
       "
     />
 
@@ -34,65 +33,198 @@
   <body>
     <main>
       <header class="app-header">
-        <h1>DJ Sync Agent</h1>
+        <div>
+          <h1>DJ Sync Agent</h1>
 
-        <p
-          id="connection-status"
-          class="subtitle"
+          <p
+            id="connection-status"
+            class="subtitle"
+          >
+            Connecting to Electron main process...
+          </p>
+        </div>
+
+        <button
+          id="refresh-service"
+          class="secondary-button"
+          type="button"
         >
-          Connecting to Electron main process...
-        </p>
+          Refresh
+        </button>
       </header>
 
-      <section class="card runtime-card">
+      <section class="grid overview-grid">
+        <article class="card status-card">
+          <span class="eyebrow">
+            SERVICE
+          </span>
+
+          <strong
+            id="service-state"
+            class="metric"
+          >
+            Unknown
+          </strong>
+
+          <span
+            id="service-detail"
+            class="muted"
+          >
+            Checking...
+          </span>
+        </article>
+
+        <article class="card status-card">
+          <span class="eyebrow">
+            DATABASE
+          </span>
+
+          <strong
+            id="database-state"
+            class="metric"
+          >
+            Unknown
+          </strong>
+
+          <span
+            id="database-detail"
+            class="muted"
+          >
+            Checking...
+          </span>
+        </article>
+
+        <article class="card status-card">
+          <span class="eyebrow">
+            SERVER
+          </span>
+
+          <strong
+            id="server-state"
+            class="metric"
+          >
+            Unknown
+          </strong>
+
+          <span
+            id="server-detail"
+            class="muted"
+          >
+            Checking...
+          </span>
+        </article>
+
+        <article class="card status-card">
+          <span class="eyebrow">
+            SYNC
+          </span>
+
+          <strong
+            id="sync-state"
+            class="metric"
+          >
+            Unknown
+          </strong>
+
+          <span
+            id="sync-detail"
+            class="muted"
+          >
+            Checking...
+          </span>
+        </article>
+      </section>
+
+      <section class="card">
         <div class="section-header">
           <div>
-            <h2>Sync Runtime</h2>
+            <span class="eyebrow">
+              CONTROL
+            </span>
 
-            <div class="status-row">
-              <span>Status:</span>
-
-              <strong
-                id="runtime-status"
-                class="status-value"
-              >
-                unknown
-              </strong>
-            </div>
+            <h2>Sync Service</h2>
           </div>
-        </div>
 
-        <div class="actions">
-          <button
-            id="start-runtime"
-            type="button"
-          >
-            Start Sync
-          </button>
-
-          <button
-            id="stop-runtime"
-            type="button"
-          >
-            Stop Sync
-          </button>
+          <span
+            id="service-label"
+            class="muted"
+          ></span>
         </div>
 
         <p
-          id="runtime-error"
+          id="service-error"
           class="error"
           aria-live="polite"
         ></p>
 
-        <h3>Last Run</h3>
+        <div class="actions">
+          <button
+            id="start-service"
+            type="button"
+          >
+            Start
+          </button>
 
-        <pre
-          id="runtime-snapshot"
-        >No sync run yet.</pre>
+          <button
+            id="restart-service"
+            type="button"
+          >
+            Restart
+          </button>
+
+          <button
+            id="stop-service"
+            type="button"
+          >
+            Stop
+          </button>
+        </div>
       </section>
 
-      <section class="card electron-card">
-        <h2>Electron</h2>
+      <section class="grid content-grid">
+        <section class="card">
+          <div class="section-header">
+            <div>
+              <span class="eyebrow">
+                SYNC
+              </span>
+
+              <h2>Last Run</h2>
+            </div>
+          </div>
+
+          <pre
+            id="last-run"
+          >No sync run yet.</pre>
+        </section>
+
+        <section class="card">
+          <div class="section-header">
+            <div>
+              <span class="eyebrow">
+                CURSOR
+              </span>
+
+              <h2>Current Cursor</h2>
+            </div>
+          </div>
+
+          <pre
+            id="cursor"
+          >No cursor available.</pre>
+        </section>
+      </section>
+
+      <section class="card">
+        <div class="section-header">
+          <div>
+            <span class="eyebrow">
+              APPLICATION
+            </span>
+
+            <h2>Electron</h2>
+          </div>
+        </div>
 
         <pre
           id="app-info"

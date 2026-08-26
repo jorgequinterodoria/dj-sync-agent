@@ -13,22 +13,27 @@ contextBridge.exposeInMainWorld(
         'app:get-info',
       ),
 
-    runtimeStart: () =>
+    serviceStatus: () =>
       ipcRenderer.invoke(
-        'runtime:start',
+        'service:status',
       ),
 
-    runtimeStop: () =>
+    serviceStart: () =>
       ipcRenderer.invoke(
-        'runtime:stop',
+        'service:start',
       ),
 
-    runtimeStatus: () =>
+    serviceStop: () =>
       ipcRenderer.invoke(
-        'runtime:status',
+        'service:stop',
       ),
 
-    onRuntimeUpdate: (
+    serviceRestart: () =>
+      ipcRenderer.invoke(
+        'service:restart',
+      ),
+
+    onServiceUpdate: (
       listener: (
         snapshot: unknown,
       ) => void,
@@ -41,13 +46,13 @@ contextBridge.exposeInMainWorld(
       };
 
       ipcRenderer.on(
-        'runtime:update',
+        'service:update',
         handler,
       );
 
       return () => {
         ipcRenderer.removeListener(
-          'runtime:update',
+          'service:update',
           handler,
         );
       };
