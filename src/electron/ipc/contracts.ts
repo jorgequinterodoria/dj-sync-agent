@@ -1,3 +1,12 @@
+import type {
+  NormalizedTrack,
+} from '../../rekordbox/normalized-track.js';
+
+import type {
+  LibraryPage,
+  LibraryTrackSummary,
+} from '../../runtime/rekordbox-library.js';
+
 export interface AppInfo {
   name: string;
   version: string;
@@ -99,8 +108,13 @@ export interface SyncStatusData {
 export interface DJSyncApplicationSnapshot {
   schemaVersion: 1;
   generatedAt: string;
-
   service: SyncStatusData;
+}
+
+export interface LibraryListOptions {
+  afterId?: string | null;
+  limit?: number;
+  search?: string;
 }
 
 export interface DJSyncRendererApi {
@@ -109,20 +123,52 @@ export interface DJSyncRendererApi {
   };
 
   application: {
-    getState(): Promise<DJSyncApplicationSnapshot>;
+    getState():
+      Promise<
+        DJSyncApplicationSnapshot
+      >;
 
-    refresh(): Promise<DJSyncApplicationSnapshot>;
+    refresh():
+      Promise<
+        DJSyncApplicationSnapshot
+      >;
 
-    start(): Promise<DJSyncApplicationSnapshot>;
+    start():
+      Promise<
+        DJSyncApplicationSnapshot
+      >;
 
-    stop(): Promise<DJSyncApplicationSnapshot>;
+    stop():
+      Promise<
+        DJSyncApplicationSnapshot
+      >;
 
-    restart(): Promise<DJSyncApplicationSnapshot>;
+    restart():
+      Promise<
+        DJSyncApplicationSnapshot
+      >;
 
     subscribe(
       listener: (
-        snapshot: DJSyncApplicationSnapshot,
+        snapshot:
+          DJSyncApplicationSnapshot,
       ) => void,
     ): () => void;
   };
+
+  library: {
+    list(
+      options?: LibraryListOptions,
+    ): Promise<LibraryPage>;
+
+    get(
+      trackId: string,
+    ): Promise<NormalizedTrack>;
+  };
 }
+
+export type {
+  LibraryPage,
+  LibraryTrackSummary,
+  NormalizedTrack,
+};

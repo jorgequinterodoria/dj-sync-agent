@@ -6,12 +6,20 @@ import {
 import { fileURLToPath } from 'node:url';
 
 import {
+  loadConfig,
+} from '../config/env.js';
+
+import {
   createDJSyncService,
 } from '../runtime/dj-sync-service.js';
 
 import {
   createDJSyncApplicationState,
 } from '../runtime/dj-sync-application-state.js';
+
+import {
+  createRekordboxLibraryService,
+} from '../runtime/rekordbox-library.js';
 
 import {
   registerIpcHandlers,
@@ -30,12 +38,20 @@ let mainWindow:
   | null =
   null;
 
+const config =
+  loadConfig();
+
 const service =
   createDJSyncService();
 
 const applicationState =
   createDJSyncApplicationState(
     service,
+  );
+
+const library =
+  createRekordboxLibraryService(
+    config,
   );
 
 function getAppInfo(): AppInfo {
@@ -60,7 +76,8 @@ function getAppInfo(): AppInfo {
   };
 }
 
-function registerApplicationEvents(): void {
+function registerApplicationEvents():
+  void {
   applicationState.subscribe(
     (snapshot) => {
       if (
@@ -78,7 +95,8 @@ function registerApplicationEvents(): void {
   );
 }
 
-function resolveRendererPath(): string {
+function resolveRendererPath():
+  string {
   return fileURLToPath(
     new URL(
       './renderer/index.html',
@@ -87,7 +105,8 @@ function resolveRendererPath(): string {
   );
 }
 
-function createMainWindow(): void {
+function createMainWindow():
+  void {
   const preloadPath =
     fileURLToPath(
       new URL(
@@ -142,6 +161,7 @@ app.whenReady().then(
 
     registerIpcHandlers({
       applicationState,
+      library,
       getAppInfo,
     });
 
@@ -181,7 +201,11 @@ app.on(
 
     applicationState.stopPolling();
 
-    app.quit();
+    void library
+      .close()
+      .finally(() => {
+        app.quit();
+      });
   },
 );
 

@@ -4,7 +4,8 @@ import type {
 
 declare global {
   interface Window {
-    djSync: DJSyncRendererApi;
+    djSync:
+      DJSyncRendererApi;
   }
 }
 

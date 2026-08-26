@@ -19,6 +19,12 @@ export const IPC_CHANNELS = {
 
   applicationUpdate:
     'application:update',
+
+  libraryList:
+    'library:list',
+
+  libraryGet:
+    'library:get',
 } as const;
 
 export type IpcChannel =

@@ -26,6 +26,12 @@ const IPC_CHANNELS = {
 
   applicationUpdate:
     'application:update',
+
+  libraryList:
+    'library:list',
+
+  libraryGet:
+    'library:get',
 } as const;
 
 contextBridge.exposeInMainWorld(
@@ -88,6 +94,28 @@ contextBridge.exposeInMainWorld(
           );
         };
       },
+    },
+
+    library: {
+      list: (
+        options?: {
+          afterId?: string | null;
+          limit?: number;
+          search?: string;
+        },
+      ) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.libraryList,
+          options,
+        ),
+
+      get: (
+        trackId: string,
+      ) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.libraryGet,
+          trackId,
+        ),
     },
   },
 );
