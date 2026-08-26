@@ -26,6 +26,7 @@
     "sync:watch": "tsx src/sync/sync-watch-cli.ts",
     "sync:status": "tsx src/sync/status-cli.ts",
     "validate:envelope": "tsx src/validate-envelope.ts",
+    "test": "node --import tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js"
