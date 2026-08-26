@@ -26,6 +26,8 @@
     "sync:watch": "tsx src/sync/sync-watch-cli.ts",
     "sync:status": "tsx src/sync/status-cli.ts",
     "validate:envelope": "tsx src/validate-envelope.ts",
+    "electron": "electron dist/electron/main.js",
+    "electron:build": "pnpm build",
     "test": "node --import tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
@@ -39,6 +41,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "electron": "^44.0.0",
     "supabase": "2.115.0",
     "tsx": "^4.0.0",
     "typescript": "^5.9.3"
