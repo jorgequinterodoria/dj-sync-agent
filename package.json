@@ -28,7 +28,7 @@
     "validate:envelope": "tsx src/validate-envelope.ts",
     "electron": "pnpm electron:build && electron dist/electron/main.js",
     "electron:build": "pnpm build && pnpm exec tsx scripts/copy-electron-assets.ts",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test $(find src -type f -name '*.test.ts' -print)",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js"

@@ -1,3 +1,7 @@
+import type {
+  DJSyncApplicationSnapshot,
+} from '../ipc/contracts.js';
+
 const connectionStatus =
   document.querySelector<HTMLElement>(
     '#connection-status',
@@ -200,7 +204,8 @@ function renderApplicationState(
     lastRun !== null
   ) {
     lastRun.textContent =
-      sync.lastRun === null
+      sync.lastRun ===
+      null
         ? 'No sync run yet.'
         : JSON.stringify(
             sync.lastRun,
@@ -264,7 +269,8 @@ async function refreshApplicationState():
   try {
     const snapshot =
       await window.djSync
-        .applicationStatus();
+        .application
+        .refresh();
 
     renderApplicationState(
       snapshot,
@@ -295,7 +301,8 @@ async function startService():
   try {
     const snapshot =
       await window.djSync
-        .serviceStart();
+        .application
+        .start();
 
     renderApplicationState(
       snapshot,
@@ -318,7 +325,8 @@ async function stopService():
   try {
     const snapshot =
       await window.djSync
-        .serviceStop();
+        .application
+        .stop();
 
     renderApplicationState(
       snapshot,
@@ -341,7 +349,8 @@ async function restartService():
   try {
     const snapshot =
       await window.djSync
-        .serviceRestart();
+        .application
+        .restart();
 
     renderApplicationState(
       snapshot,
@@ -368,7 +377,8 @@ async function loadAppInfo():
   try {
     const info =
       await window.djSync
-        .getAppInfo();
+        .app
+        .getInfo();
 
     appInfo.textContent =
       JSON.stringify(
@@ -388,7 +398,8 @@ function registerEvents():
   () => void {
   const unsubscribe =
     window.djSync
-      .onApplicationUpdate(
+      .application
+      .subscribe(
         (snapshot) => {
           renderApplicationState(
             snapshot,

@@ -1,10 +1,18 @@
-import { copyFile, mkdir } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import {
+  copyFile,
+  mkdir,
+} from 'node:fs/promises';
 
-const projectRoot = resolve(
-  import.meta.dirname,
-  '..',
-);
+import {
+  dirname,
+  resolve,
+} from 'node:path';
+
+const projectRoot =
+  resolve(
+    import.meta.dirname,
+    '..',
+  );
 
 const assets = [
   {
@@ -29,9 +37,13 @@ const assets = [
   },
 ];
 
-for (const asset of assets) {
+for (
+  const asset of assets
+) {
   await mkdir(
-    dirname(asset.destination),
+    dirname(
+      asset.destination,
+    ),
     {
       recursive: true,
     },
@@ -44,5 +56,5 @@ for (const asset of assets) {
 }
 
 console.log(
-  `Copied ${assets.length} Electron renderer assets.`,
+  `Copied ${assets.length} Electron assets.`,
 );

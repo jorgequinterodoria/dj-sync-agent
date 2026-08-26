@@ -5,57 +5,89 @@ const {
   ipcRenderer,
 } = electron;
 
+const IPC_CHANNELS = {
+  appGetInfo:
+    'app:get-info',
+
+  applicationGetState:
+    'application:get-state',
+
+  applicationRefresh:
+    'application:refresh',
+
+  applicationStart:
+    'application:start',
+
+  applicationStop:
+    'application:stop',
+
+  applicationRestart:
+    'application:restart',
+
+  applicationUpdate:
+    'application:update',
+} as const;
+
 contextBridge.exposeInMainWorld(
   'djSync',
   {
-    getAppInfo: () =>
-      ipcRenderer.invoke(
-        'app:get-info',
-      ),
+    app: {
+      getInfo: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.appGetInfo,
+        ),
+    },
 
-    applicationStatus: () =>
-      ipcRenderer.invoke(
-        'application:status',
-      ),
+    application: {
+      getState: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.applicationGetState,
+        ),
 
-    serviceStart: () =>
-      ipcRenderer.invoke(
-        'service:start',
-      ),
+      refresh: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.applicationRefresh,
+        ),
 
-    serviceStop: () =>
-      ipcRenderer.invoke(
-        'service:stop',
-      ),
+      start: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.applicationStart,
+        ),
 
-    serviceRestart: () =>
-      ipcRenderer.invoke(
-        'service:restart',
-      ),
+      stop: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.applicationStop,
+        ),
 
-    onApplicationUpdate: (
-      listener: (
-        snapshot: unknown,
-      ) => void,
-    ) => {
-      const handler = (
-        _event: unknown,
-        snapshot: unknown,
+      restart: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.applicationRestart,
+        ),
+
+      subscribe: (
+        listener: (
+          snapshot: unknown,
+        ) => void,
       ) => {
-        listener(snapshot);
-      };
+        const handler = (
+          _event: unknown,
+          snapshot: unknown,
+        ) => {
+          listener(snapshot);
+        };
 
-      ipcRenderer.on(
-        'application:update',
-        handler,
-      );
-
-      return () => {
-        ipcRenderer.removeListener(
-          'application:update',
+        ipcRenderer.on(
+          IPC_CHANNELS.applicationUpdate,
           handler,
         );
-      };
+
+        return () => {
+          ipcRenderer.removeListener(
+            IPC_CHANNELS.applicationUpdate,
+            handler,
+          );
+        };
+      },
     },
   },
 );

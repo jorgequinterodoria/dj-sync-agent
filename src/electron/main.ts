@@ -1,8 +1,8 @@
 import {
   app,
   BrowserWindow,
-  ipcMain,
 } from 'electron';
+
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -12,6 +12,18 @@ import {
 import {
   createDJSyncApplicationState,
 } from '../runtime/dj-sync-application-state.js';
+
+import {
+  registerIpcHandlers,
+} from './ipc/register.js';
+
+import {
+  IPC_CHANNELS,
+} from './ipc/channels.js';
+
+import type {
+  AppInfo,
+} from './ipc/contracts.js';
 
 let mainWindow:
   | BrowserWindow
@@ -26,32 +38,29 @@ const applicationState =
     service,
   );
 
-interface AppInfo {
-  name: string;
-  version: string;
-  electronVersion: string;
-  nodeVersion: string;
-  platform: NodeJS.Platform;
-  arch: string;
+function getAppInfo(): AppInfo {
+  return {
+    name:
+      app.getName(),
+
+    version:
+      app.getVersion(),
+
+    electronVersion:
+      process.versions.electron,
+
+    nodeVersion:
+      process.versions.node,
+
+    platform:
+      process.platform,
+
+    arch:
+      process.arch,
+  };
 }
 
-function publishApplicationSnapshot():
-  void {
-  if (
-    mainWindow === null ||
-    mainWindow.isDestroyed()
-  ) {
-    return;
-  }
-
-  mainWindow.webContents.send(
-    'application:update',
-    applicationState.snapshot(),
-  );
-}
-
-function registerApplicationEvents():
-  void {
+function registerApplicationEvents(): void {
   applicationState.subscribe(
     (snapshot) => {
       if (
@@ -62,62 +71,14 @@ function registerApplicationEvents():
       }
 
       mainWindow.webContents.send(
-        'application:update',
+        IPC_CHANNELS.applicationUpdate,
         snapshot,
       );
     },
   );
 }
 
-function registerIpcHandlers():
-  void {
-  ipcMain.handle(
-    'app:get-info',
-    (): AppInfo => ({
-      name: app.getName(),
-      version: app.getVersion(),
-      electronVersion:
-        process.versions.electron,
-      nodeVersion:
-        process.versions.node,
-      platform:
-        process.platform,
-      arch:
-        process.arch,
-    }),
-  );
-
-  ipcMain.handle(
-    'application:status',
-    async () => {
-      return applicationState.refresh();
-    },
-  );
-
-  ipcMain.handle(
-    'service:start',
-    async () => {
-      return applicationState.start();
-    },
-  );
-
-  ipcMain.handle(
-    'service:stop',
-    async () => {
-      return applicationState.stop();
-    },
-  );
-
-  ipcMain.handle(
-    'service:restart',
-    async () => {
-      return applicationState.restart();
-    },
-  );
-}
-
-function resolveRendererPath():
-  string {
+function resolveRendererPath(): string {
   return fileURLToPath(
     new URL(
       './renderer/index.html',
@@ -126,8 +87,7 @@ function resolveRendererPath():
   );
 }
 
-function createMainWindow():
-  void {
+function createMainWindow(): void {
   const preloadPath =
     fileURLToPath(
       new URL(
@@ -173,25 +133,21 @@ function createMainWindow():
   );
 }
 
-function startApplicationState():
-  void {
-  applicationState.startPolling();
-}
-
-function stopApplicationState():
-  void {
-  applicationState.stopPolling();
-}
-
 let shuttingDown =
   false;
 
 app.whenReady().then(
   async () => {
     registerApplicationEvents();
-    registerIpcHandlers();
+
+    registerIpcHandlers({
+      applicationState,
+      getAppInfo,
+    });
+
     createMainWindow();
-    startApplicationState();
+
+    applicationState.startPolling();
 
     await applicationState.refresh();
 
@@ -223,7 +179,7 @@ app.on(
 
     event.preventDefault();
 
-    stopApplicationState();
+    applicationState.stopPolling();
 
     app.quit();
   },
