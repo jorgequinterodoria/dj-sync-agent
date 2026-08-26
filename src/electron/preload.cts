@@ -1,91 +1,56 @@
 import electron = require('electron');
 
-interface AppInfo {
-  name: string;
-  version: string;
-  electronVersion: string;
-  nodeVersion: string;
-  platform: NodeJS.Platform;
-  arch: string;
-}
+const {
+  contextBridge,
+  ipcRenderer,
+} = electron;
 
-interface RuntimeSnapshot {
-  status:
-    | 'stopped'
-    | 'starting'
-    | 'running'
-    | 'stopping';
+contextBridge.exposeInMainWorld(
+  'djSync',
+  {
+    getAppInfo: () =>
+      ipcRenderer.invoke(
+        'app:get-info',
+      ),
 
-  startedAt: string | null;
+    runtimeStart: () =>
+      ipcRenderer.invoke(
+        'runtime:start',
+      ),
 
-  lastRun: {
-    schemaVersion: number;
-    startedAt: string;
-    finishedAt: string;
-    elapsedMs: number;
-    batchesProcessed: number;
-    scanned: number;
-    processed: number;
-    completed: boolean;
-    finalCursor: {
-      rbLocalUsn: number;
-      id: string;
-    } | null;
-  } | null;
+    runtimeStop: () =>
+      ipcRenderer.invoke(
+        'runtime:stop',
+      ),
 
-  lastError: string | null;
-}
+    runtimeStatus: () =>
+      ipcRenderer.invoke(
+        'runtime:status',
+      ),
 
-type RuntimeUpdateListener = (
-  snapshot: RuntimeSnapshot,
-) => void;
+    onRuntimeUpdate: (
+      listener: (
+        snapshot: unknown,
+      ) => void,
+    ) => {
+      const handler = (
+        _event: unknown,
+        snapshot: unknown,
+      ) => {
+        listener(snapshot);
+      };
 
-const electronApi = Object.freeze({
-  getAppInfo: (): Promise<AppInfo> =>
-    electron.ipcRenderer.invoke(
-      'app:get-info',
-    ),
-
-  runtimeStart: (): Promise<RuntimeSnapshot> =>
-    electron.ipcRenderer.invoke(
-      'runtime:start',
-    ),
-
-  runtimeStop: (): Promise<RuntimeSnapshot> =>
-    electron.ipcRenderer.invoke(
-      'runtime:stop',
-    ),
-
-  runtimeStatus: (): Promise<RuntimeSnapshot> =>
-    electron.ipcRenderer.invoke(
-      'runtime:status',
-    ),
-
-  runtimeOnUpdate: (
-    listener: RuntimeUpdateListener,
-  ): (() => void) => {
-    const handler = (
-      _event: Electron.IpcRendererEvent,
-      snapshot: RuntimeSnapshot,
-    ): void => {
-      listener(snapshot);
-    };
-
-    electron.ipcRenderer.on(
-      'runtime:update',
-      handler,
-    );
-
-    return () => {
-      electron.ipcRenderer.removeListener(
+      ipcRenderer.on(
         'runtime:update',
         handler,
       );
-    };
-  },
-});
 
-electron.contextBridge.exposeInMainWorld(
-  'djSync',
-  electronApi,
+      return () => {
+        ipcRenderer.removeListener(
+          'runtime:update',
+          handler,
+        );
+      };
+    },
+  },
 );

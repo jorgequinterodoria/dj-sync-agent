@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        style-src 'self';
+        script-src 'self';
+        connect-src 'none';
+        img-src 'self' data:;
+        font-src 'self';
+        object-src 'none';
+        base-uri 'none';
+        frame-ancestors 'none';
+      "
+    />
+
+    <title>DJ Sync Agent</title>
+
+    <link
+      rel="stylesheet"
+      href="./styles.css"
+    />
+  </head>
+
+  <body>
+    <main>
+      <header class="app-header">
+        <h1>DJ Sync Agent</h1>
+
+        <p
+          id="connection-status"
+          class="subtitle"
+        >
+          Connecting to Electron main process...
+        </p>
+      </header>
+
+      <section class="card runtime-card">
+        <div class="section-header">
+          <div>
+            <h2>Sync Runtime</h2>
+
+            <div class="status-row">
+              <span>Status:</span>
+
+              <strong
+                id="runtime-status"
+                class="status-value"
+              >
+                unknown
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button
+            id="start-runtime"
+            type="button"
+          >
+            Start Sync
+          </button>
+
+          <button
+            id="stop-runtime"
+            type="button"
+          >
+            Stop Sync
+          </button>
+        </div>
+
+        <p
+          id="runtime-error"
+          class="error"
+          aria-live="polite"
+        ></p>
+
+        <h3>Last Run</h3>
+
+        <pre
+          id="runtime-snapshot"
+        >No sync run yet.</pre>
+      </section>
+
+      <section class="card electron-card">
+        <h2>Electron</h2>
+
+        <pre
+          id="app-info"
+        >Loading application information...</pre>
+      </section>
+    </main>
+
+    <script
+      type="module"
+      src="./renderer.js"
+    ></script>
+  </body>
+</html>
