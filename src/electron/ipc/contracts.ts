@@ -117,9 +117,88 @@ export interface LibraryListOptions {
   search?: string;
 }
 
+export type AudioAnalysisApplicationStatus =
+  | 'idle'
+  | 'verifying'
+  | 'analyzing'
+  | 'processing'
+  | 'completed'
+  | 'failed';
+
+export interface AudioVerifiedAsset {
+  path: string;
+  size: number;
+  checksum: string;
+  algorithm:
+    'sha256';
+  bytesRead: number;
+}
+
+export interface AudioAnalysisResult {
+  durationSeconds:
+    number | null;
+
+  sampleRate:
+    number | null;
+
+  channels:
+    number | null;
+
+  bitrate:
+    number | null;
+
+  codec:
+    string | null;
+}
+
+export interface AudioPersistenceResult {
+  analysisRunId:
+    number;
+
+  persistedFeatures:
+    number;
+}
+
+export interface AudioAnalysisApplicationSnapshot {
+  schemaVersion: 1;
+
+  trackId: string;
+
+  status:
+    AudioAnalysisApplicationStatus;
+
+  updatedAt: string;
+
+  filePath:
+    | string
+    | null;
+
+  verified: boolean;
+
+  asset:
+    | AudioVerifiedAsset
+    | null;
+
+  analysis:
+    | AudioAnalysisResult
+    | null;
+
+  persistence:
+    | AudioPersistenceResult
+    | null;
+
+  persistenceConfigured:
+    boolean;
+
+  error:
+    | string
+    | null;
+}
+
 export interface DJSyncRendererApi {
   app: {
-    getInfo(): Promise<AppInfo>;
+    getInfo():
+      Promise<AppInfo>;
   };
 
   application: {
@@ -158,12 +237,42 @@ export interface DJSyncRendererApi {
 
   library: {
     list(
-      options?: LibraryListOptions,
-    ): Promise<LibraryPage>;
+      options?:
+        LibraryListOptions,
+    ):
+      Promise<LibraryPage>;
 
     get(
-      trackId: string,
-    ): Promise<NormalizedTrack>;
+      trackId:
+        string,
+    ):
+      Promise<NormalizedTrack>;
+  };
+
+  audio: {
+    status(
+      trackId:
+        string,
+    ):
+      Promise<
+        AudioAnalysisApplicationSnapshot
+      >;
+
+    analyze(
+      trackId:
+        string,
+    ):
+      Promise<
+        AudioAnalysisApplicationSnapshot
+      >;
+
+    analyzeAndPersist(
+      trackId:
+        string,
+    ):
+      Promise<
+        AudioAnalysisApplicationSnapshot
+      >;
   };
 }
 

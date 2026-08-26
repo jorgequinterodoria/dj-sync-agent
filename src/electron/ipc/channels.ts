@@ -25,6 +25,15 @@ export const IPC_CHANNELS = {
 
   libraryGet:
     'library:get',
+
+  audioStatus:
+    'audio:status',
+
+  audioAnalyze:
+    'audio:analyze',
+
+  audioAnalyzeAndPersist:
+    'audio:analyze-and-persist',
 } as const;
 
 export type IpcChannel =

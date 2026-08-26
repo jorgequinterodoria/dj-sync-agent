@@ -20,6 +20,10 @@ import type {
   RekordboxLibraryService,
 } from '../../runtime/rekordbox-library.js';
 
+import {
+  createDefaultDJSyncAudioApplicationService,
+} from '../../runtime/dj-sync-audio-service.js';
+
 export interface RegisterIpcHandlersOptions {
   applicationState:
     DJSyncApplicationState;
@@ -35,6 +39,11 @@ export function registerIpcHandlers(
   options:
     RegisterIpcHandlersOptions,
 ): void {
+  const audioService =
+    createDefaultDJSyncAudioApplicationService(
+      options.library,
+    );
+
   ipcMain.handle(
     IPC_CHANNELS.appGetInfo,
     (
@@ -98,9 +107,11 @@ export function registerIpcHandlers(
         | LibraryListOptions
         | undefined,
     ) => {
-      return options.library.list(
-        input,
-      );
+      return options
+        .library
+        .list(
+          input,
+        );
     },
   );
 
@@ -110,9 +121,48 @@ export function registerIpcHandlers(
       _event,
       trackId: string,
     ) => {
-      return options.library.getById(
+      return options
+        .library
+        .getById(
+          trackId,
+        );
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.audioStatus,
+    async (
+      _event,
+      trackId: string,
+    ) => {
+      return audioService.status(
         trackId,
       );
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.audioAnalyze,
+    async (
+      _event,
+      trackId: string,
+    ) => {
+      return audioService.analyze(
+        trackId,
+      );
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.audioAnalyzeAndPersist,
+    async (
+      _event,
+      trackId: string,
+    ) => {
+      return audioService
+        .analyzeAndPersist(
+          trackId,
+        );
     },
   );
 }

@@ -32,43 +32,58 @@ const IPC_CHANNELS = {
 
   libraryGet:
     'library:get',
+
+  audioStatus:
+    'audio:status',
+
+  audioAnalyze:
+    'audio:analyze',
+
+  audioAnalyzeAndPersist:
+    'audio:analyze-and-persist',
 } as const;
 
 contextBridge.exposeInMainWorld(
   'djSync',
   {
     app: {
-      getInfo: () =>
-        ipcRenderer.invoke(
-          IPC_CHANNELS.appGetInfo,
-        ),
+      getInfo:
+        () =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.appGetInfo,
+          ),
     },
 
     application: {
-      getState: () =>
-        ipcRenderer.invoke(
-          IPC_CHANNELS.applicationGetState,
-        ),
+      getState:
+        () =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.applicationGetState,
+          ),
 
-      refresh: () =>
-        ipcRenderer.invoke(
-          IPC_CHANNELS.applicationRefresh,
-        ),
+      refresh:
+        () =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.applicationRefresh,
+          ),
 
-      start: () =>
-        ipcRenderer.invoke(
-          IPC_CHANNELS.applicationStart,
-        ),
+      start:
+        () =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.applicationStart,
+          ),
 
-      stop: () =>
-        ipcRenderer.invoke(
-          IPC_CHANNELS.applicationStop,
-        ),
+      stop:
+        () =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.applicationStop,
+          ),
 
-      restart: () =>
-        ipcRenderer.invoke(
-          IPC_CHANNELS.applicationRestart,
-        ),
+      restart:
+        () =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.applicationRestart,
+          ),
 
       subscribe: (
         listener: (
@@ -79,7 +94,9 @@ contextBridge.exposeInMainWorld(
           _event: unknown,
           snapshot: unknown,
         ) => {
-          listener(snapshot);
+          listener(
+            snapshot,
+          );
         };
 
         ipcRenderer.on(
@@ -97,25 +114,66 @@ contextBridge.exposeInMainWorld(
     },
 
     library: {
-      list: (
-        options?: {
-          afterId?: string | null;
-          limit?: number;
-          search?: string;
-        },
-      ) =>
-        ipcRenderer.invoke(
-          IPC_CHANNELS.libraryList,
-          options,
-        ),
+      list:
+        (
+          options?: {
+            afterId?:
+              | string
+              | null;
 
-      get: (
-        trackId: string,
-      ) =>
-        ipcRenderer.invoke(
-          IPC_CHANNELS.libraryGet,
-          trackId,
-        ),
+            limit?:
+              number;
+
+            search?:
+              string;
+          },
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.libraryList,
+            options,
+          ),
+
+      get:
+        (
+          trackId:
+            string,
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.libraryGet,
+            trackId,
+          ),
+    },
+
+    audio: {
+      status:
+        (
+          trackId:
+            string,
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.audioStatus,
+            trackId,
+          ),
+
+      analyze:
+        (
+          trackId:
+            string,
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.audioAnalyze,
+            trackId,
+          ),
+
+      analyzeAndPersist:
+        (
+          trackId:
+            string,
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.audioAnalyzeAndPersist,
+            trackId,
+          ),
     },
   },
 );
