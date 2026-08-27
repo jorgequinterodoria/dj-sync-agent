@@ -438,6 +438,7 @@ export class SupabaseJobRepository
     options: {
       jobId: number;
       workerId: string;
+      output?: unknown;
     },
   ):
     Promise<JobRecord> {
@@ -451,6 +452,9 @@ export class SupabaseJobRepository
 
         workerId:
           options.workerId,
+
+        output:
+          options.output,
       });
 
     return parseJob(

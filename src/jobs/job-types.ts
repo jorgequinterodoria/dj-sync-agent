@@ -39,38 +39,11 @@ export interface JobExecutionContext {
 
 export interface JobExecutionResult {
   completed: boolean;
+  output?: unknown;
 }
 
 export interface JobHandler {
   execute(
     context: JobExecutionContext,
   ): Promise<JobExecutionResult>;
-}
-
-export type JobEngineStatus =
-  | 'stopped'
-  | 'starting'
-  | 'running'
-  | 'stopping';
-
-export interface JobEngineRunResult {
-  claimed: number;
-  completed: number;
-  failed: number;
-  skipped: number;
-}
-
-export interface JobEngineSnapshot {
-  status: JobEngineStatus;
-  workerId: string;
-  startedAt: string | null;
-  lastRunAt: string | null;
-  lastRun: JobEngineRunResult | null;
-  lastError: string | null;
-  totals: {
-    claimed: number;
-    completed: number;
-    failed: number;
-    skipped: number;
-  };
 }

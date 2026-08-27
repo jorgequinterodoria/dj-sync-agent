@@ -241,6 +241,8 @@ app.whenReady().then(
             deviceId:
               deviceId ||
               'electron-unconfigured',
+            apiUrl: null,
+            apiKey: null,
           });
 
     runtime =

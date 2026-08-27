@@ -121,6 +121,9 @@ function createRepository(
 
       workerId:
         string;
+
+      output?:
+        unknown;
     }>,
 
     fail: [] as Array<{
@@ -792,6 +795,50 @@ test(
       [
         'track.intelligence.refresh',
       ],
+    );
+  },
+);
+test(
+  'job engine forwards handler output to repository execution',
+  async () => {
+    const {
+      repository,
+      calls,
+    } = createRepository();
+
+    const engine = createJobEngine({
+      repository,
+      deviceId: 'device-1',
+    });
+
+    engine.register(
+      'track.intelligence.refresh',
+      {
+        async execute() {
+          return {
+            completed: true,
+            output: {
+              intelligenceProfile: {
+                schemaVersion: 1,
+                engineVersion: '1.0.0',
+              },
+            },
+          };
+        },
+      },
+    );
+
+    const result = await engine.runOnce();
+
+    assert.equal(result.completed, 1);
+    assert.deepEqual(
+      calls.execute[0]?.output,
+      {
+        intelligenceProfile: {
+          schemaVersion: 1,
+          engineVersion: '1.0.0',
+        },
+      },
     );
   },
 );

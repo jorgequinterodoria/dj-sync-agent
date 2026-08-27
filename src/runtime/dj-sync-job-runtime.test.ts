@@ -6,47 +6,63 @@ import {
 } from './dj-sync-job-runtime.js';
 
 test(
-  'job runtime validates required device id',
+  'job runtime exposes disabled state when device id is missing',
   () => {
-    assert.throws(
-      () =>
-        createDJSyncJobRuntime({
-          deviceId:
-            '',
+    const runtime =
+      createDJSyncJobRuntime({
+        deviceId: '',
+        apiUrl: 'https://example.com',
+        apiKey: 'test-key',
+      });
 
-          apiUrl:
-            'https://example.com',
+    const snapshot =
+      runtime.snapshot();
 
-          apiKey:
-            'test-key',
-        }),
-      {
-        message:
-          'SYNC_AGENT_ID is required.',
-      },
+    assert.equal(
+      snapshot.configured,
+      false,
+    );
+
+    assert.equal(
+      snapshot.status,
+      'disabled',
+    );
+
+    assert.equal(
+      snapshot.workerId,
+      null,
     );
   },
 );
 
 test(
-  'job runtime validates required api key',
+  'job runtime exposes disabled state when api key is missing',
   () => {
-    assert.throws(
-      () =>
-        createDJSyncJobRuntime({
-          deviceId:
-            'macbook-air-jorge-1',
+    const runtime =
+      createDJSyncJobRuntime({
+        deviceId:
+          'macbook-air-jorge-1',
+        apiUrl:
+          'https://example.com',
+        apiKey: '',
+      });
 
-          apiUrl:
-            'https://example.com',
+    const snapshot =
+      runtime.snapshot();
 
-          apiKey:
-            '',
-        }),
-      {
-        message:
-          'SYNC_API_KEY is required.',
-      },
+    assert.equal(
+      snapshot.configured,
+      false,
+    );
+
+    assert.equal(
+      snapshot.status,
+      'disabled',
+    );
+
+    assert.equal(
+      snapshot.workerId,
+      null,
     );
   },
 );
@@ -59,10 +75,8 @@ test(
         createDJSyncJobRuntime({
           deviceId:
             'macbook-air-jorge-1',
-
           apiUrl:
             'ftp://example.com',
-
           apiKey:
             'test-key',
         }),
@@ -81,10 +95,8 @@ test(
       createDJSyncJobRuntime({
         deviceId:
           'macbook-air-jorge-1',
-
         apiUrl:
           'https://example.com',
-
         apiKey:
           'test-key',
       });
@@ -103,6 +115,11 @@ test(
       typeof runtime.runOnce,
       'function',
     );
+
+    assert.equal(
+      typeof runtime.snapshot,
+      'function',
+    );
   },
 );
 
@@ -113,10 +130,8 @@ test(
       createDJSyncJobRuntime({
         deviceId:
           'macbook-air-jorge-1',
-
         apiUrl:
           'https://example.com',
-
         apiKey:
           'test-key',
       });
@@ -127,19 +142,36 @@ test(
     );
   },
 );
+
 test(
   'job runtime exposes disabled state when backend configuration is missing',
   () => {
-    const runtime = createDJSyncJobRuntime({
-      deviceId: 'macbook-air-jorge-1',
-      apiUrl: null,
-      apiKey: null,
-    });
+    const runtime =
+      createDJSyncJobRuntime({
+        deviceId:
+          'macbook-air-jorge-1',
+        apiUrl:
+          null,
+        apiKey:
+          null,
+      });
 
-    const snapshot = runtime.snapshot();
+    const snapshot =
+      runtime.snapshot();
 
-    assert.equal(snapshot.configured, false);
-    assert.equal(snapshot.status, 'disabled');
-    assert.equal(snapshot.workerId, null);
+    assert.equal(
+      snapshot.configured,
+      false,
+    );
+
+    assert.equal(
+      snapshot.status,
+      'disabled',
+    );
+
+    assert.equal(
+      snapshot.workerId,
+      null,
+    );
   },
 );

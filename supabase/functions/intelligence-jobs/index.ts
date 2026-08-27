@@ -474,6 +474,9 @@ Deno.serve(
 
               p_worker_id:
                 workerId,
+
+              p_output:
+                body.output ?? null,
             },
           );
 

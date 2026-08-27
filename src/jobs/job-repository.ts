@@ -1,6 +1,4 @@
-import type {
-  JobRecord,
-} from './job-types.js';
+import type { JobRecord } from './job-types.js';
 
 export interface JobRepository {
   claim(
@@ -10,16 +8,15 @@ export interface JobRepository {
       limit: number;
       leaseSeconds: number;
     },
-  ):
-    Promise<JobRecord[]>;
+  ): Promise<JobRecord[]>;
 
   execute(
     options: {
       jobId: number;
       workerId: string;
+      output?: unknown;
     },
-  ):
-    Promise<JobRecord>;
+  ): Promise<JobRecord>;
 
   fail(
     options: {
@@ -30,6 +27,5 @@ export interface JobRepository {
       maxAttempts: number;
       retryDelaySeconds: number;
     },
-  ):
-    Promise<JobRecord>;
+  ): Promise<JobRecord>;
 }

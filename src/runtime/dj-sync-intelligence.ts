@@ -10,6 +10,11 @@ import type {
   RekordboxLibraryService,
 } from './rekordbox-library.js';
 
+import {
+  buildTrackIntelligenceProfile,
+  type TrackIntelligenceProfile,
+} from '../intelligence/intelligence-engine.js';
+
 const execFileAsync =
   promisify(execFile);
 
@@ -285,7 +290,7 @@ export interface IntelligenceJob {
 }
 
 export interface DJSyncIntelligenceSnapshot {
-  schemaVersion: 1;
+  schemaVersion: 2;
 
   generatedAt: string;
 
@@ -296,6 +301,9 @@ export interface DJSyncIntelligenceSnapshot {
   intelligence:
     TrackIntelligence
     | null;
+
+  profile:
+    TrackIntelligenceProfile;
 
   latestAnalysis:
     LatestAnalysis;
@@ -2015,8 +2023,17 @@ export function createDJSyncIntelligenceService(
         track.identity.id,
       );
 
+    const profile =
+      buildTrackIntelligenceProfile({
+        track,
+        latestAnalysis:
+          state.latestAnalysis,
+        latestFeatures:
+          state.latestFeatures,
+      });
+
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
 
       generatedAt:
         new Date().toISOString(),
@@ -2028,6 +2045,8 @@ export function createDJSyncIntelligenceService(
 
       intelligence:
         state.intelligence,
+
+      profile,
 
       latestAnalysis:
         state.latestAnalysis,
@@ -2064,12 +2083,27 @@ export function createDJSyncIntelligenceService(
         track.identity.id,
       );
 
+    const input = builder(
+      track,
+      state.intelligence,
+      state.latestAnalysis,
+    );
+
+    if (
+      input.jobType ===
+        'track.intelligence.refresh' &&
+      input.payload &&
+      typeof input.payload === 'object'
+    ) {
+      input.payload = {
+        ...(input.payload as Record<string, unknown>),
+        featureSnapshot:
+          state.latestFeatures,
+      };
+    }
+
     return options.repository.insertJob(
-      builder(
-        track,
-        state.intelligence,
-        state.latestAnalysis,
-      ),
+      input,
     );
   }
 

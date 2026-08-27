@@ -472,7 +472,21 @@ test(
 
     assert.equal(
       result.schemaVersion,
+      2,
+    );
+
+    assert.equal(
+      result.profile.schemaVersion,
       1,
+    );
+
+    assert.equal(
+      result.profile.analysis.analysisRunId,
+      37,
+    );
+
+    assert.ok(
+      result.profile.dj.readinessScore > 0,
     );
 
     assert.equal(
@@ -561,6 +575,17 @@ test(
         }
       ).reason,
       'manual_desktop_refresh',
+    );
+
+    assert.equal(
+      Array.isArray(
+        (
+          input?.payload as {
+            featureSnapshot?: unknown[];
+          }
+        ).featureSnapshot,
+      ),
+      true,
     );
   },
 );
