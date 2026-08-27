@@ -1,57 +1,55 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { runDJSyncAutonomousCopilot } from './dj-sync-autonomous-copilot.js';
 
-import { createDJSyncAutonomousCopilot } from './dj-sync-autonomous-copilot.js';
-
-test('autonomous copilot runs and exposes cycle state', async () => {
-  const copilot = createDJSyncAutonomousCopilot({
-    deviceId: 'device-1',
-    executors: {
-      intelligence: async () => ({ ready: true }),
-      reasoning: async () => ({ decision: 'recommend' }),
-      action: async () => ({ executed: true }),
+test('runtime wrapper executes the autonomous copilot boundary', async () => {
+  const result = await runDJSyncAutonomousCopilot(
+    {
+      contextProvider: {
+        async build() {
+          return {
+            schemaVersion: 1,
+            request: { userMessage: 'read' },
+            conversation: {
+              summary: null,
+              recentMessages: [],
+              constraints: [],
+            },
+            track: null,
+            library: { candidates: [] },
+            history: { recentPlays: [] },
+            intelligence: {},
+            personalization: {},
+            semantic: { results: [] },
+            truncated: [],
+            estimatedChars: 1,
+          };
+        },
+      },
+      planner: {
+        async plan() {
+          return {
+            schemaVersion: 1,
+            requiresApproval: false,
+            steps: [],
+          };
+        },
+      },
+      reads: { async execute() { return null; } },
+      actionMapper: { validate() { throw new Error('unused'); } },
+      actions: {
+        prepare() { throw new Error('unused'); },
+        approve() { throw new Error('unused'); },
+        reject() { throw new Error('unused'); },
+        async execute() { throw new Error('unused'); },
+      },
     },
-  });
-
-  await copilot.start();
-
-  const result = await copilot.run({
-    deviceId: 'ignored-by-adapter',
-    trackId: 'track-1',
-    trigger: 'manual',
-    requestedAt: new Date().toISOString(),
-  });
-
-  assert.equal(result.completed, true);
-  assert.equal(copilot.snapshot().status, 'idle');
-  assert.equal(copilot.snapshot().lastCycle?.completed, true);
-});
-
-test('autonomous copilot records failed cycles', async () => {
-  const copilot = createDJSyncAutonomousCopilot({
-    deviceId: 'device-1',
-    executors: {
-      intelligence: async () => { throw new Error('intelligence unavailable'); },
+    {
+      requestId: 'runtime-1',
+      deviceId: 'device-1',
+      userMessage: 'read',
     },
-  });
-
-  const result = await copilot.run({
-    deviceId: 'device-1',
-    trigger: 'sync_change',
-    requestedAt: new Date().toISOString(),
-  });
-
-  assert.equal(result.completed, false);
-  assert.equal(copilot.snapshot().status, 'failed');
-  assert.equal(copilot.snapshot().lastError, 'intelligence unavailable');
-});
-
-test('autonomous copilot requires a device id', () => {
-  assert.throws(
-    () => createDJSyncAutonomousCopilot({
-      deviceId: '   ',
-      executors: {},
-    }),
-    /requires a device id/,
   );
+
+  assert.equal(result.status, 'completed');
 });

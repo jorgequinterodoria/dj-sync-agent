@@ -1,3 +1,5 @@
+import { redactSecrets } from '../../security/secret-redactor.js';
+
 export type ActionAuditEvent =
   | 'requested'
   | 'previewed'
@@ -22,60 +24,27 @@ export interface ActionAudit {
   list(): readonly ActionAuditRecord[];
 }
 
-function required(
-  value: string,
-  field: string,
-): string {
+function required(value: string, field: string): string {
   const normalized = value.trim();
-
-  if (!normalized) {
-    throw new Error(
-      `Action audit ${field} is required.`,
-    );
-  }
-
+  if (!normalized) throw new Error(`Action audit ${field} is required.`);
   return normalized;
 }
 
-export class InMemoryActionAudit
-  implements ActionAudit {
-  private readonly records: ActionAuditRecord[] =
-    [];
+export class InMemoryActionAudit implements ActionAudit {
+  private readonly records: ActionAuditRecord[] = [];
 
-  public append(
-    record: ActionAuditRecord,
-  ): void {
+  public append(record: ActionAuditRecord): void {
+    const safe = redactSecrets(record) as ActionAuditRecord;
     this.records.push({
-      ...record,
-      actionId:
-        required(
-          record.actionId,
-          'action id',
-        ),
-      deviceId:
-        required(
-          record.deviceId,
-          'device id',
-        ),
-      requestId:
-        required(
-          record.requestId,
-          'request id',
-        ),
-      timestamp:
-        required(
-          record.timestamp,
-          'timestamp',
-        ),
+      ...safe,
+      actionId: required(safe.actionId, 'action id'),
+      deviceId: required(safe.deviceId, 'device id'),
+      requestId: required(safe.requestId, 'request id'),
+      timestamp: required(safe.timestamp, 'timestamp'),
     });
   }
 
-  public list():
-    readonly ActionAuditRecord[] {
-    return this.records.map(
-      (record) => ({
-        ...record,
-      }),
-    );
+  public list(): readonly ActionAuditRecord[] {
+    return this.records.map((record) => ({ ...record }));
   }
 }

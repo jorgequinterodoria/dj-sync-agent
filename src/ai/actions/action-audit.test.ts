@@ -1,40 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { InMemoryActionAudit } from './action-audit.js';
 
-import {
-  InMemoryActionAudit,
-} from './action-audit.js';
-
-test('action audit preserves event order', () => {
-  const audit =
-    new InMemoryActionAudit();
-
+test('audit redacts sensitive nested values', () => {
+  const audit = new InMemoryActionAudit();
   audit.append({
-    event: 'requested',
+    event: 'executed',
     actionId: 'action-1',
     deviceId: 'device-1',
     requestId: 'request-1',
-    timestamp:
-      '2026-08-27T00:00:00Z',
-  });
-
-  audit.append({
-    event: 'approved',
-    actionId: 'action-1',
-    approvalId: 'approval-1',
-    deviceId: 'device-1',
-    requestId: 'request-1',
-    timestamp:
-      '2026-08-27T00:00:01Z',
+    timestamp: '2026-08-27T00:00:00Z',
+    result: { ok: true, apiKey: 'secret' },
   });
 
   assert.deepEqual(
-    audit.list().map(
-      (record) => record.event,
-    ),
-    [
-      'requested',
-      'approved',
-    ],
+    audit.list()[0]?.result,
+    { ok: true, apiKey: '[REDACTED]' },
   );
 });

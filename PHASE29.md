@@ -1,52 +1,59 @@
-# FASE 29 — Copilot Planner + Multi-Step Execution
+# FASE 29 — Security / Secrets / Permissions Hardening
 
 ## Objetivo
 
-Evolucionar el ToolPlan de Fase 28 hacia planificación y ejecución multi-step con validación, estado persistente durante el ciclo y replanificación controlada.
+Cerrar las superficies de seguridad del Copilot y de la auditoría antes de entrar en reliability/performance.
 
-## Componentes
+## Seguridad local
 
-- `CopilotPlanner`
-- `validateToolPlan`
-- `ExecutionState`
-- `DJSyncCopilotPlanner`
+- SHA-256 estable para action identity;
+- tokens de aprobación de 256 bits mediante CSPRNG;
+- comparación de tokens sin early-exit por contenido;
+- token no expuesto mientras la aprobación está `pending`;
+- token retirado después de `consume`;
+- expiración validada también en `approve`;
+- binding por deviceId/requestId/previewId/action hash;
+- replay protection one-shot;
+- read-only / interactive permissions;
+- allow-list / deny-list de tools;
+- redacción de secretos en audit metadata.
 
-## Guardrails
+## Supabase hardening
 
-- `maxSteps`
-- `maxToolCalls`
-- `maxReplans`
-- `maxAttemptsPerStep`
+Nueva migración:
 
-## Replanning
+`20260827000011_copilot_action_audit_hardening.sql`
 
-Si un step falla, los resultados completados se conservan en `ExecutionState` y el proveedor opcional de replanning puede generar un nuevo plan.
+- revoca acceso de `anon` y `authenticated` a la tabla/secuencia;
+- mantiene el audit surface append-only para la aplicación;
+- limita el tamaño de errores y metadata.
 
-## Seguridad
+La Edge Function ahora:
 
-- Las herramientas continúan ejecutándose exclusivamente mediante `ToolRegistry`.
-- Read/write/review permanecen separados.
-- Las herramientas desconocidas se rechazan.
-- Los planes con dependencias inválidas o ciclos se rechazan.
-- Las acciones write/review requieren aprobación explícita durante validación.
-- No hay acceso directo a Supabase ni SQL.
-- No se incorporan secrets al planner.
+- acepta únicamente POST;
+- limita el tamaño del body;
+- rechaza metadata con nombres de campos sensibles;
+- limita metadata a 16 KiB;
+- limita errores a 4000 caracteres;
+- usa `SUPABASE_SERVICE_ROLE_KEY` únicamente en el runtime de Edge Function.
 
-## Supabase
+## Despliegue seguro
 
-No hay migraciones.
-No ejecutar:
+La función debe desplegarse **sin** `--no-verify-jwt`.
+
+Después de validar localmente:
 
 ```bash
 pnpm supabase db push
+pnpm supabase functions deploy copilot-action-audit
 ```
 
-## Validación
+No usar:
 
 ```bash
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm electron:build
-git diff --check
+pnpm supabase functions deploy copilot-action-audit --no-verify-jwt
 ```
+
+## Restricción
+
+No introducir secrets en renderer, ToolPlan, prompts, audit records o respuestas del Copilot.

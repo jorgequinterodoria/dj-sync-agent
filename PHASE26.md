@@ -1,55 +1,26 @@
-# FASE 26 — Copilot Context Assembly
+# FASE 26 — Set Builder + Set Analysis
 
 ## Objetivo
 
-Construir un contexto acotado y determinista para el Copilot sin volcar toda la biblioteca, historial o memoria semántica al modelo.
+Completar la capacidad de preparar sets a partir de tracks existentes, manteniendo el resultado determinista, acotado y explicable.
 
-## Fuentes
+## Implementación
 
-- Conversation Memory
-- Current Track
-- Library candidates
-- History
-- Intelligence
-- Personalization
-- Semantic Memory
+- `SetBuilder` determinista;
+- hard constraints de BPM, energía, artistas, géneros, tracks excluidos y recientes;
+- selección armónica basada en la lógica Camelot existente;
+- roles de set;
+- transiciones y scores;
+- curva de energía únicamente con señales disponibles;
+- warnings explícitos;
+- adapter desde `NormalizedTrack` sin inventar energía u otros datos ausentes;
+- herramientas AI `set.build` y `set.analyze`;
+- servicio runtime como frontera.
 
-## Preservación de fronteras
+## Regla crítica
 
-Esta fase únicamente ensambla datos ya obtenidos. No ejecuta tools, no accede directamente a Supabase y no contiene secretos.
-
-## Budget
-
-```text
-maxMessages
-maxCandidates
-maxHistory
-maxMemoryResults
-maxContextChars
-```
-
-Las fuentes se recortan de manera determinista y el resultado registra qué fuentes fueron truncadas.
-
-## Provider independence
-
-El contexto no depende de OpenAI, Anthropic ni ningún provider concreto.
+Nunca se inventan tracks, energía, tonalidad u otras señales que no estén disponibles.
 
 ## Supabase
 
-No hay migraciones en esta fase.
-
-No ejecutar:
-
-```bash
-pnpm supabase db push
-```
-
-## Validación
-
-```bash
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm electron:build
-git diff --check
-```
+No hay cambios de base de datos en esta fase.

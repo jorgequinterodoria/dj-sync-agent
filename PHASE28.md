@@ -1,39 +1,38 @@
-# FASE 28 — Tool-Driven Copilot
+# FASE 28 — End-to-End Autonomous Copilot
 
 ## Objetivo
 
-Añadir una capa determinista de selección, planificación y reutilización de resultados de tools sin acoplar el Agent a Core o Supabase.
+Cerrar el flujo operativo real entre contexto, planificación, ejecución de lectura y acciones controladas por aprobación.
 
-## Componentes
+## Flujo
 
-- `ToolSelectionPolicy`
-- `ToolPlan`
-- `ToolResultMemory`
-- `DJSyncToolOrchestrator`
-
-## Reglas
-
-- Read tools están permitidas por defecto.
-- Write/review requieren una política explícita.
-- Tools desconocidas quedan bloqueadas.
-- Los planes tienen IDs únicos.
-- Las dependencias solo pueden apuntar a pasos anteriores.
-- Resultados idénticos pueden reutilizarse dentro del contexto del orquestador.
-- No se ejecutan tools directamente desde el modelo.
-- Toda ejecución sigue pasando por `ToolRegistry`.
-- No hay acceso SQL/Supabase desde esta capa.
-
-## Supabase
-
-No hay migraciones.
-No ejecutar `pnpm supabase db push`.
-
-## Validación
-
-```bash
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm electron:build
-git diff --check
+```text
+request
+  ↓
+context
+  ↓
+planner
+  ↓
+read tools
+  ↓
+write/review/execute action
+  ↓
+approval boundary
+  ↓
+real action
+  ↓
+resume remaining plan
+  ↓
+completed
 ```
+
+## Garantías
+
+- Read tools se ejecutan automáticamente.
+- Write/review/execute no se ejecutan automáticamente.
+- Un pending action se conserva con su preview y approval exactos.
+- Resume reutiliza la misma aprobación y no crea una segunda aprobación.
+- Se conservan resultados ya completados.
+- Replan limitado por `maxReplans`.
+- `AbortSignal` cancela el ciclo.
+- `requestId` no puede ejecutarse dos veces simultáneamente en la misma instancia.

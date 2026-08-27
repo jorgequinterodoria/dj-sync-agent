@@ -23,48 +23,79 @@ export type CopilotActionUiStatus =
   | 'failed';
 
 export interface CopilotActionControllerOptions {
-  readonly executor: CopilotActionExecutor;
-  readonly now?: () => string;
+  readonly executor:
+    CopilotActionExecutor;
+
+  readonly now?:
+    () => string;
 }
 
 export interface CopilotActionControllerState {
-  readonly preview: ActionPreview;
-  readonly approval: ApprovalDecision;
-  readonly status: CopilotActionUiStatus;
-  readonly error?: string;
-  readonly result?: unknown;
+  readonly preview:
+    ActionPreview;
+
+  readonly approval:
+    ApprovalDecision;
+
+  readonly status:
+    CopilotActionUiStatus;
+
+  readonly error?:
+    string;
+
+  readonly result?:
+    unknown;
 }
 
 export interface DJSyncCopilotActionController {
   prepare(
     input: {
-      readonly preview: ActionPreview;
-      readonly deviceId: string;
-      readonly requestId: string;
-      readonly ttlMs?: number;
+      readonly preview:
+        ActionPreview;
+
+      readonly deviceId:
+        string;
+
+      readonly requestId:
+        string;
+
+      readonly ttlMs?:
+        number;
     },
-  ): CopilotActionControllerState;
+  ):
+    CopilotActionControllerState;
 
   approve(
     approvalId: string,
-  ): CopilotActionControllerState;
+  ):
+    CopilotActionControllerState;
 
   reject(
     approvalId: string,
-  ): CopilotActionControllerState;
+  ):
+    CopilotActionControllerState;
 
   execute(
     input: {
-      readonly deviceId: string;
-      readonly requestId: string;
+      readonly deviceId:
+        string;
+
+      readonly requestId:
+        string;
     },
-  ): Promise<CopilotActionControllerState>;
+  ):
+    Promise<
+      CopilotActionControllerState
+    >;
 }
 
 function statusFromApproval(
-  approval: ApprovalDecision,
+  approval:
+    ApprovalDecision,
 ): CopilotActionUiStatus {
-  switch (approval.status) {
+  switch (
+    approval.status
+  ) {
     case 'approved':
       return 'approved';
 
@@ -79,44 +110,24 @@ function statusFromApproval(
   }
 }
 
-function requireCurrent(
-  current:
-    | CopilotActionControllerState
-    | undefined,
-): CopilotActionControllerState {
-  if (!current) {
-    throw new Error(
-      'No action is pending.',
-    );
-  }
-
-  return current;
-}
-
-function withoutError(
-  state: CopilotActionControllerState,
-): CopilotActionControllerState {
-  const {
-    error: _error,
-    ...rest
-  } = state;
-
-  return rest;
+function defaultNow(): string {
+  return new Date().toISOString();
 }
 
 export function createDJSyncCopilotActionController(
-  options: CopilotActionControllerOptions,
+  options:
+    CopilotActionControllerOptions,
 ): DJSyncCopilotActionController {
+  const now =
+    options.now ??
+    defaultNow;
+
   const gate =
     createDJSyncCopilotActionGate({
       executor:
         options.executor,
 
-      ...(options.now !== undefined
-        ? {
-            now: options.now,
-          }
-        : {}),
+      now,
     });
 
   let current:
@@ -126,9 +137,11 @@ export function createDJSyncCopilotActionController(
   return {
     prepare(input) {
       const prepared =
-        gate.prepare(input);
+        gate.prepare(
+          input,
+        );
 
-      const state: CopilotActionControllerState = {
+      current = {
         preview:
           prepared.preview,
 
@@ -141,17 +154,24 @@ export function createDJSyncCopilotActionController(
           ),
       };
 
-      current = state;
-
-      return state;
+      return current;
     },
 
-    approve(approvalId) {
-      const existing =
-        requireCurrent(current);
+    approve(
+      approvalId,
+    ) {
+      if (
+        current ===
+        undefined
+      ) {
+        throw new Error(
+          'No action is pending.',
+        );
+      }
 
       if (
-        existing.approval.approvalId !==
+        current.approval
+          .approvalId !==
         approvalId
       ) {
         throw new Error(
@@ -160,10 +180,10 @@ export function createDJSyncCopilotActionController(
       }
 
       if (
-        existing.approval.status !==
+        current.approval.status !==
         'pending'
       ) {
-        return existing;
+        return current;
       }
 
       const approval =
@@ -171,30 +191,35 @@ export function createDJSyncCopilotActionController(
           approvalId,
         );
 
-      const next =
-        withoutError({
-          preview:
-            existing.preview,
+      current = {
+        ...current,
 
-          approval,
+        approval,
 
-          status:
-            statusFromApproval(
-              approval,
-            ),
-        });
+        status:
+          statusFromApproval(
+            approval,
+          ),
+      };
 
-      current = next;
-
-      return next;
+      return current;
     },
 
-    reject(approvalId) {
-      const existing =
-        requireCurrent(current);
+    reject(
+      approvalId,
+    ) {
+      if (
+        current ===
+        undefined
+      ) {
+        throw new Error(
+          'No action is pending.',
+        );
+      }
 
       if (
-        existing.approval.approvalId !==
+        current.approval
+          .approvalId !==
         approvalId
       ) {
         throw new Error(
@@ -203,10 +228,10 @@ export function createDJSyncCopilotActionController(
       }
 
       if (
-        existing.approval.status !==
+        current.approval.status !==
         'pending'
       ) {
-        return existing;
+        return current;
       }
 
       const approval =
@@ -214,66 +239,67 @@ export function createDJSyncCopilotActionController(
           approvalId,
         );
 
-      const next =
-        withoutError({
-          preview:
-            existing.preview,
+      current = {
+        ...current,
 
-          approval,
+        approval,
 
-          status:
-            statusFromApproval(
-              approval,
-            ),
-        });
+        status:
+          statusFromApproval(
+            approval,
+          ),
+      };
 
-      current = next;
-
-      return next;
+      return current;
     },
 
-    async execute(input) {
-      const existing =
-        requireCurrent(current);
+    async execute(
+      input,
+    ) {
+      if (
+        current ===
+        undefined
+      ) {
+        throw new Error(
+          'No action is pending.',
+        );
+      }
+
+      const action =
+        current;
 
       if (
-        existing.approval.status !==
+        action.approval.status !==
         'approved'
       ) {
-        return existing;
+        return action;
       }
 
       const token =
-        existing.approval.token;
+        action.approval.token;
 
       if (!token) {
-        const failed:
-          CopilotActionControllerState = {
-          preview:
-            existing.preview,
+        current = {
+          ...action,
 
-          approval:
-            existing.approval,
-
-          status: 'failed',
+          status:
+            'failed',
 
           error:
             'Approved action is missing a token.',
         };
 
-        current = failed;
-
-        return failed;
+        return current;
       }
 
       try {
         const result =
           await gate.execute({
             preview:
-              existing.preview,
+              action.preview,
 
             approvalId:
-              existing.approval
+              action.approval
                 .approvalId,
 
             token,
@@ -285,42 +311,66 @@ export function createDJSyncCopilotActionController(
               input.requestId,
           });
 
-        const executed:
-          CopilotActionControllerState = {
-          preview:
-            existing.preview,
+        current = {
+          ...action,
 
-          approval:
-            existing.approval,
-
-          status: 'executed',
+          status:
+            'executed',
 
           result,
         };
 
-        current = executed;
+        return current;
+      } catch (
+        error: unknown
+      ) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : String(error);
 
-        return executed;
-      } catch (error: unknown) {
-        const failed:
-          CopilotActionControllerState = {
-          preview:
-            existing.preview,
+        /*
+         * If the final execution boundary determines that the
+         * approval expired, expose that precise UI state rather
+         * than incorrectly reporting a generic failure.
+         */
+        if (
+          /approval has expired/i.test(
+            message,
+          )
+        ) {
+          const expiredApproval:
+            ApprovalDecision =
+            {
+              ...action.approval,
+              status:
+                'expired',
+            };
 
-          approval:
-            existing.approval,
+          current = {
+            ...action,
 
-          status: 'failed',
+            approval:
+              expiredApproval,
+
+            status:
+              'expired',
+          };
+
+          return current;
+        }
+
+        current = {
+          ...action,
+
+          status:
+            'failed',
 
           error:
-            error instanceof Error
-              ? error.message
-              : String(error),
+            message,
         };
 
-        current = failed;
-
-        return failed;
+        return current;
       }
     },
   };

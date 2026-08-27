@@ -66,43 +66,78 @@ export interface DJSyncCopilotActionGate {
     >;
 }
 
+function defaultNow(): string {
+  return new Date().toISOString();
+}
+
 export function createDJSyncCopilotActionGate(
   options: DJSyncCopilotActionGateOptions,
 ): DJSyncCopilotActionGate {
+  const now =
+    options.now ??
+    defaultNow;
+
+  /*
+   * IMPORTANT:
+   *
+   * The approval gate must use the exact same clock as
+   * the surrounding runtime/controller.
+   *
+   * This is essential for:
+   * - deterministic tests;
+   * - simulated time;
+   * - expiration checks;
+   * - controller/gate state consistency.
+   *
+   * When an external ApprovalGate is supplied, ownership of
+   * its clock remains with that implementation.
+   */
   const gate =
     options.approvalGate ??
-    new InMemoryApprovalGate();
+    new InMemoryApprovalGate({
+      now,
+    });
 
   const audit =
     new InMemoryActionAudit();
 
-  const now =
-    options.now ??
-    (() => new Date().toISOString());
-
   return {
     prepare(input) {
+      const timestamp =
+        now();
+
       audit.append({
-        event: 'requested',
+        event:
+          'requested',
+
         actionId:
           input.preview.id,
+
         deviceId:
           input.deviceId,
+
         requestId:
           input.requestId,
-        timestamp: now(),
+
+        timestamp,
       });
 
       const approval =
         gate.request({
           preview:
             input.preview,
+
           deviceId:
             input.deviceId,
+
           requestId:
             input.requestId,
-          now: now(),
-          ...(input.ttlMs !== undefined
+
+          now:
+            timestamp,
+
+          ...(input.ttlMs !==
+          undefined
             ? {
                 ttlMs:
                   input.ttlMs,
@@ -111,68 +146,114 @@ export function createDJSyncCopilotActionGate(
         });
 
       audit.append({
-        event: 'previewed',
+        event:
+          'previewed',
+
         actionId:
           input.preview.id,
+
         approvalId:
           approval.approvalId,
+
         deviceId:
           input.deviceId,
+
         requestId:
           input.requestId,
-        timestamp: now(),
+
+        timestamp:
+          now(),
       });
 
       return {
         preview:
           input.preview,
+
         approval,
       };
     },
 
-    approve(approvalId) {
+    approve(
+      approvalId,
+    ) {
       const approval =
         gate.approve(
           approvalId,
         );
 
+      let event:
+        | 'approved'
+        | 'rejected'
+        | 'expired';
+
+      if (
+        approval.status ===
+        'approved'
+      ) {
+        event =
+          'approved';
+      } else if (
+        approval.status ===
+        'expired'
+      ) {
+        event =
+          'expired';
+      } else {
+        event =
+          'rejected';
+      }
+
       audit.append({
-        event:
-          approval.status ===
-          'approved'
-            ? 'approved'
-            : 'rejected',
+        event,
+
         actionId:
           approval.previewId,
+
         approvalId:
           approval.approvalId,
+
         deviceId:
           approval.deviceId,
+
         requestId:
           approval.requestId,
-        timestamp: now(),
+
+        timestamp:
+          now(),
       });
 
       return approval;
     },
 
-    reject(approvalId) {
+    reject(
+      approvalId,
+    ) {
       const approval =
         gate.reject(
           approvalId,
         );
 
       audit.append({
-        event: 'rejected',
+        event:
+          approval.status ===
+          'expired'
+            ? 'expired'
+            : 'rejected',
+
         actionId:
           approval.previewId,
+
         approvalId:
           approval.approvalId,
+
         deviceId:
           approval.deviceId,
+
         requestId:
           approval.requestId,
-        timestamp: now(),
+
+        timestamp:
+          now(),
       });
 
       return approval;
@@ -184,15 +265,21 @@ export function createDJSyncCopilotActionGate(
           gate.consume({
             approvalId:
               input.approvalId,
+
             token:
               input.token,
+
             preview:
               input.preview,
+
             deviceId:
               input.deviceId,
+
             requestId:
               input.requestId,
-            now: now(),
+
+            now:
+              now(),
           });
 
         const result =
@@ -201,32 +288,50 @@ export function createDJSyncCopilotActionGate(
           );
 
         audit.append({
-          event: 'executed',
+          event:
+            'executed',
+
           actionId:
             input.preview.id,
+
           approvalId:
             approval.approvalId,
+
           deviceId:
             input.deviceId,
+
           requestId:
             input.requestId,
-          timestamp: now(),
+
+          timestamp:
+            now(),
+
           result,
         });
 
         return result;
-      } catch (error: unknown) {
+      } catch (
+        error
+      ) {
         audit.append({
-          event: 'failed',
+          event:
+            'failed',
+
           actionId:
             input.preview.id,
+
           approvalId:
             input.approvalId,
+
           deviceId:
             input.deviceId,
+
           requestId:
             input.requestId,
-          timestamp: now(),
+
+          timestamp:
+            now(),
+
           result:
             error instanceof Error
               ? error.message
