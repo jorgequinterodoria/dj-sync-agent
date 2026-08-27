@@ -1,54 +1,81 @@
-# FASE 30 — Copilot Action Safety + Approval Gate
+# FASE 30 — Performance / Reliability / Recovery
 
 ## Objetivo
 
-Establecer una frontera formal entre propuesta, aprobación y ejecución de acciones sensibles.
+Introducir una frontera de resiliencia reutilizable para las operaciones del sistema sin acoplarla a Supabase, Electron o un proveedor de IA.
 
-## Flujo
+## Capacidades
+
+### Retry
+
+- exponential backoff;
+- upper delay bound;
+- configurable jitter;
+- retryable error policy;
+- attempt count;
+- cancellation-safe waiting.
+
+### Circuit Breaker
+
+Estados:
 
 ```text
-request
-  ↓
-preview
-  ↓
-approval gate
-  ↓
-consume approval
-  ↓
-execute
-  ↓
-audit
+closed → open → half-open → closed
 ```
 
-## Componentes
+Protege contra cascadas de fallos y llamadas repetidas a una dependencia inestable.
 
-- `ActionPreview`
-- `InMemoryApprovalGate`
-- `InMemoryActionAudit`
-- `DJSyncCopilotActionGate`
+### Idempotency
 
-## Reglas
+Evita ejecutar dos veces la misma operación lógica cuando el mismo idempotency key ya tiene un resultado completado.
 
-- Las acciones `write`/`review` requieren aprobación explícita.
-- La aprobación queda vinculada a `deviceId`, `requestId`, `previewId` y hash de la acción.
-- La aprobación tiene TTL.
-- La aprobación es one-shot.
-- Las acciones modificadas no pueden reutilizar una aprobación anterior.
-- Un rechazo nunca se interpreta como aprobación.
-- Un timeout/expiración bloquea la ejecución.
-- Cada transición relevante queda auditada.
-- No se almacenan API keys ni service-role secrets.
-- La ejecución real sigue delegada a un executor externo.
+### Recovery Journal
 
-## Supabase
+Permite guardar:
 
-No hay migraciones en esta fase.
-
-No ejecutar:
-
-```bash
-pnpm supabase db push
+```text
+started
+checkpoint
+completed
+failed
+cancelled
 ```
+
+por `requestId`, conservando orden de secuencia.
+
+La interfaz está preparada para sustituir el store en memoria por almacenamiento persistente sin cambiar al consumidor.
+
+### Bounded Concurrency
+
+Las operaciones batch pueden limitar el número de tareas simultáneas y conservar el orden de los resultados.
+
+### Runtime Facade
+
+`createDJSyncReliability()` combina:
+
+```text
+retry
++
+circuit breaker
++
+bounded concurrency
++
+idempotency store
++
+recovery journal
+```
+
+## No incluye
+
+Esta fase no introduce todavía:
+
+- migración Supabase;
+- Edge Function;
+- cambios de esquema remoto;
+- secretos nuevos;
+- ejecución automática de acciones DJ.
+
+Las mutations continúan protegidas por el Approval Gate de las fases anteriores.
 
 ## Validación
 
@@ -59,3 +86,5 @@ pnpm build
 pnpm electron:build
 git diff --check
 ```
+
+No ejecutar `pnpm supabase db push` para esta entrega.
