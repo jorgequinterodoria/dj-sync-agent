@@ -24,6 +24,10 @@ import {
   createDefaultDJSyncAudioApplicationService,
 } from '../../runtime/dj-sync-audio-service.js';
 
+import {
+  createDefaultDJSyncIntelligenceService,
+} from '../../runtime/dj-sync-intelligence.js';
+
 export interface RegisterIpcHandlersOptions {
   applicationState:
     DJSyncApplicationState;
@@ -41,6 +45,11 @@ export function registerIpcHandlers(
 ): void {
   const audioService =
     createDefaultDJSyncAudioApplicationService(
+      options.library,
+    );
+
+  const intelligenceService =
+    createDefaultDJSyncIntelligenceService(
       options.library,
     );
 
@@ -161,6 +170,57 @@ export function registerIpcHandlers(
     ) => {
       return audioService
         .analyzeAndPersist(
+          trackId,
+        );
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.intelligenceGet,
+    async (
+      _event,
+      trackId: string,
+    ) => {
+      return intelligenceService.get(
+        trackId,
+      );
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.intelligenceRefresh,
+    async (
+      _event,
+      trackId: string,
+    ) => {
+      return intelligenceService
+        .enqueueRefresh(
+          trackId,
+        );
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.intelligencePreferenceUpdate,
+    async (
+      _event,
+      trackId: string,
+    ) => {
+      return intelligenceService
+        .enqueuePreferenceUpdate(
+          trackId,
+        );
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.intelligenceRetire,
+    async (
+      _event,
+      trackId: string,
+    ) => {
+      return intelligenceService
+        .enqueueRetire(
           trackId,
         );
     },

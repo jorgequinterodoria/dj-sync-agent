@@ -34,6 +34,18 @@ export const IPC_CHANNELS = {
 
   audioAnalyzeAndPersist:
     'audio:analyze-and-persist',
+
+  intelligenceGet:
+    'intelligence:get',
+
+  intelligenceRefresh:
+    'intelligence:refresh',
+
+  intelligencePreferenceUpdate:
+    'intelligence:preference-update',
+
+  intelligenceRetire:
+    'intelligence:retire',
 } as const;
 
 export type IpcChannel =

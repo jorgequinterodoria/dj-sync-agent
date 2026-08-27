@@ -7,6 +7,11 @@ import type {
   LibraryTrackSummary,
 } from '../../runtime/rekordbox-library.js';
 
+import type {
+  DJSyncIntelligenceSnapshot,
+  IntelligenceJob,
+} from '../../runtime/dj-sync-intelligence.js';
+
 export interface AppInfo {
   name: string;
   version: string;
@@ -22,13 +27,26 @@ export interface CursorPosition {
 }
 
 export interface SyncLastRun {
-  startedAt: string | null;
-  finishedAt: string | null;
-  elapsedMs: number | null;
-  batchesProcessed: number;
-  scanned: number;
-  processed: number;
-  completed: boolean | null;
+  startedAt:
+    string | null;
+
+  finishedAt:
+    string | null;
+
+  elapsedMs:
+    number | null;
+
+  batchesProcessed:
+    number;
+
+  scanned:
+    number;
+
+  processed:
+    number;
+
+  completed:
+    boolean | null;
 
   cursorBefore:
     | CursorPosition
@@ -38,25 +56,32 @@ export interface SyncLastRun {
     | CursorPosition
     | null;
 
-  lastError: string | null;
+  lastError:
+    string | null;
 }
 
 export interface SyncStatusData {
   schemaVersion: number;
+
   generatedAt: string;
 
   service: {
     label: string;
+
     loaded: boolean;
+
     state:
       | 'running'
       | 'stopped'
       | 'unknown';
-    pid: number | null;
+
+    pid:
+      number | null;
   };
 
   database: {
     path: string;
+
     exists: boolean;
   };
 
@@ -74,7 +99,8 @@ export interface SyncStatusData {
       | 'failed'
       | null;
 
-    sessionId: string | null;
+    sessionId:
+      string | null;
 
     cursor:
       | CursorPosition
@@ -94,27 +120,47 @@ export interface SyncStatusData {
 
   server: {
     apiUrl: string;
+
     configured: boolean;
+
     reachable: boolean;
+
     healthy: boolean;
-    latencyMs: number | null;
-    version: string | null;
-    region: string | null;
-    deploymentId: string | null;
-    error: string | null;
+
+    latencyMs:
+      number | null;
+
+    version:
+      string | null;
+
+    region:
+      string | null;
+
+    deploymentId:
+      string | null;
+
+    error:
+      string | null;
   };
 }
 
 export interface DJSyncApplicationSnapshot {
   schemaVersion: 1;
+
   generatedAt: string;
+
   service: SyncStatusData;
 }
 
 export interface LibraryListOptions {
-  afterId?: string | null;
-  limit?: number;
-  search?: string;
+  afterId?:
+    string | null;
+
+  limit?:
+    number;
+
+  search?:
+    string;
 }
 
 export type AudioAnalysisApplicationStatus =
@@ -127,10 +173,14 @@ export type AudioAnalysisApplicationStatus =
 
 export interface AudioVerifiedAsset {
   path: string;
+
   size: number;
+
   checksum: string;
+
   algorithm:
     'sha256';
+
   bytesRead: number;
 }
 
@@ -152,11 +202,9 @@ export interface AudioAnalysisResult {
 }
 
 export interface AudioPersistenceResult {
-  analysisRunId:
-    number;
+  analysisRunId: number;
 
-  persistedFeatures:
-    number;
+  persistedFeatures: number;
 }
 
 export interface AudioAnalysisApplicationSnapshot {
@@ -203,29 +251,19 @@ export interface DJSyncRendererApi {
 
   application: {
     getState():
-      Promise<
-        DJSyncApplicationSnapshot
-      >;
+      Promise<DJSyncApplicationSnapshot>;
 
     refresh():
-      Promise<
-        DJSyncApplicationSnapshot
-      >;
+      Promise<DJSyncApplicationSnapshot>;
 
     start():
-      Promise<
-        DJSyncApplicationSnapshot
-      >;
+      Promise<DJSyncApplicationSnapshot>;
 
     stop():
-      Promise<
-        DJSyncApplicationSnapshot
-      >;
+      Promise<DJSyncApplicationSnapshot>;
 
     restart():
-      Promise<
-        DJSyncApplicationSnapshot
-      >;
+      Promise<DJSyncApplicationSnapshot>;
 
     subscribe(
       listener: (
@@ -274,9 +312,39 @@ export interface DJSyncRendererApi {
         AudioAnalysisApplicationSnapshot
       >;
   };
+
+  intelligence: {
+    get(
+      trackId:
+        string,
+    ):
+      Promise<
+        DJSyncIntelligenceSnapshot
+      >;
+
+    refresh(
+      trackId:
+        string,
+    ):
+      Promise<IntelligenceJob>;
+
+    preferenceUpdate(
+      trackId:
+        string,
+    ):
+      Promise<IntelligenceJob>;
+
+    retire(
+      trackId:
+        string,
+    ):
+      Promise<IntelligenceJob>;
+  };
 }
 
 export type {
+  DJSyncIntelligenceSnapshot,
+  IntelligenceJob,
   LibraryPage,
   LibraryTrackSummary,
   NormalizedTrack,

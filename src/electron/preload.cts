@@ -41,6 +41,18 @@ const IPC_CHANNELS = {
 
   audioAnalyzeAndPersist:
     'audio:analyze-and-persist',
+
+  intelligenceGet:
+    'intelligence:get',
+
+  intelligenceRefresh:
+    'intelligence:refresh',
+
+  intelligencePreferenceUpdate:
+    'intelligence:preference-update',
+
+  intelligenceRetire:
+    'intelligence:retire',
 } as const;
 
 contextBridge.exposeInMainWorld(
@@ -172,6 +184,48 @@ contextBridge.exposeInMainWorld(
         ) =>
           ipcRenderer.invoke(
             IPC_CHANNELS.audioAnalyzeAndPersist,
+            trackId,
+          ),
+    },
+
+    intelligence: {
+      get:
+        (
+          trackId:
+            string,
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.intelligenceGet,
+            trackId,
+          ),
+
+      refresh:
+        (
+          trackId:
+            string,
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.intelligenceRefresh,
+            trackId,
+          ),
+
+      preferenceUpdate:
+        (
+          trackId:
+            string,
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.intelligencePreferenceUpdate,
+            trackId,
+          ),
+
+      retire:
+        (
+          trackId:
+            string,
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.intelligenceRetire,
             trackId,
           ),
     },
