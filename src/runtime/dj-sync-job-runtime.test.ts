@@ -127,3 +127,19 @@ test(
     );
   },
 );
+test(
+  'job runtime exposes disabled state when backend configuration is missing',
+  () => {
+    const runtime = createDJSyncJobRuntime({
+      deviceId: 'macbook-air-jorge-1',
+      apiUrl: null,
+      apiKey: null,
+    });
+
+    const snapshot = runtime.snapshot();
+
+    assert.equal(snapshot.configured, false);
+    assert.equal(snapshot.status, 'disabled');
+    assert.equal(snapshot.workerId, null);
+  },
+);

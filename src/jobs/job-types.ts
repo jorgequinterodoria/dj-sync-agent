@@ -12,59 +12,28 @@ export type ManagedJobType =
 
 export interface JobRecord {
   id: number;
-
   jobKey: string;
-
   jobType: string;
-
   status: JobStatus;
-
   priority: number;
-
   eventId: string;
-
   deviceId: string;
-
   trackId: string;
-
-  rbLocalUsn:
-    | number
-    | null;
-
+  rbLocalUsn: number | null;
   payload: unknown;
-
   attempts: number;
-
   availableAt: string;
-
-  lockedAt:
-    | string
-    | null;
-
-  startedAt:
-    | string
-    | null;
-
-  completedAt:
-    | string
-    | null;
-
-  lastError:
-    | string
-    | null;
-
+  lockedAt: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  lastError: string | null;
   createdAt: string;
-
   updatedAt: string;
-
-  lockedBy:
-    | string
-    | null;
+  lockedBy: string | null;
 }
 
 export interface JobExecutionContext {
   workerId: string;
-
   job: JobRecord;
 }
 
@@ -74,8 +43,34 @@ export interface JobExecutionResult {
 
 export interface JobHandler {
   execute(
-    context:
-      JobExecutionContext,
-  ):
-    Promise<JobExecutionResult>;
+    context: JobExecutionContext,
+  ): Promise<JobExecutionResult>;
+}
+
+export type JobEngineStatus =
+  | 'stopped'
+  | 'starting'
+  | 'running'
+  | 'stopping';
+
+export interface JobEngineRunResult {
+  claimed: number;
+  completed: number;
+  failed: number;
+  skipped: number;
+}
+
+export interface JobEngineSnapshot {
+  status: JobEngineStatus;
+  workerId: string;
+  startedAt: string | null;
+  lastRunAt: string | null;
+  lastRun: JobEngineRunResult | null;
+  lastError: string | null;
+  totals: {
+    claimed: number;
+    completed: number;
+    failed: number;
+    skipped: number;
+  };
 }

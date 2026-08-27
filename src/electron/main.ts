@@ -11,11 +11,22 @@ import {
 
 import {
   createDJSyncService,
+  readServiceEnvironment,
 } from '../runtime/dj-sync-service.js';
 
 import {
   createDJSyncApplicationState,
+  type DJSyncApplicationState,
 } from '../runtime/dj-sync-application-state.js';
+
+import {
+  createDJSyncRuntime,
+  type DJSyncRuntime,
+} from '../runtime/dj-sync-runtime.js';
+
+import {
+  createDJSyncJobRuntime,
+} from '../runtime/dj-sync-job-runtime.js';
 
 import {
   createRekordboxLibraryService,
@@ -44,40 +55,45 @@ const config =
 const service =
   createDJSyncService();
 
-const applicationState =
-  createDJSyncApplicationState(
-    service,
-  );
-
 const library =
   createRekordboxLibraryService(
     config,
   );
 
+let runtime:
+  | DJSyncRuntime
+  | null =
+  null;
+
+let applicationState:
+  | DJSyncApplicationState
+  | null =
+  null;
+
 function getAppInfo(): AppInfo {
   return {
     name:
       app.getName(),
-
     version:
       app.getVersion(),
-
     electronVersion:
       process.versions.electron,
-
     nodeVersion:
       process.versions.node,
-
     platform:
       process.platform,
-
     arch:
       process.arch,
   };
 }
 
-function registerApplicationEvents():
-  void {
+function registerApplicationEvents(): void {
+  if (
+    applicationState === null
+  ) {
+    return;
+  }
+
   applicationState.subscribe(
     (snapshot) => {
       if (
@@ -95,8 +111,7 @@ function registerApplicationEvents():
   );
 }
 
-function resolveRendererPath():
-  string {
+function resolveRendererPath(): string {
   return fileURLToPath(
     new URL(
       './renderer/index.html',
@@ -105,8 +120,7 @@ function resolveRendererPath():
   );
 }
 
-function createMainWindow():
-  void {
+function createMainWindow(): void {
   const preloadPath =
     fileURLToPath(
       new URL(
@@ -122,7 +136,6 @@ function createMainWindow():
       minWidth: 1100,
       minHeight: 700,
       show: false,
-
       webPreferences: {
         preload: preloadPath,
         contextIsolation: true,
@@ -135,8 +148,7 @@ function createMainWindow():
     'ready-to-show',
     () => {
       mainWindow?.show();
-
-      void applicationState.refresh();
+      void applicationState?.refresh();
     },
   );
 
@@ -152,11 +164,96 @@ function createMainWindow():
   );
 }
 
-let shuttingDown =
-  false;
+function resolveJobsApiUrl(
+  serviceEnvironment: Awaited<
+    ReturnType<typeof readServiceEnvironment>
+  >,
+): string | null {
+  const explicit =
+    config.INTELLIGENCE_JOBS_API_URL?.trim() ??
+    process.env.INTELLIGENCE_JOBS_API_URL?.trim() ??
+    '';
+
+  if (explicit) {
+    return explicit;
+  }
+
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? '';
+
+  if (supabaseUrl) {
+    return `${supabaseUrl.replace(/\/$/, '')}/functions/v1/intelligence-jobs`;
+  }
+
+  const serviceApiUrl =
+    serviceEnvironment.apiUrl?.trim() ??
+    '';
+
+  if (serviceApiUrl) {
+    if (/\/functions\/v1\/sync-(?:batches?|batch)\/?$/.test(serviceApiUrl)) {
+      return serviceApiUrl.replace(
+        /\/sync-(?:batches?|batch)\/?$/,
+        '/intelligence-jobs',
+      );
+    }
+
+    if (/\/functions\/v1\/sync\/batches\/?$/.test(serviceApiUrl)) {
+      return serviceApiUrl.replace(
+        /\/sync\/batches\/?$/,
+        '/intelligence-jobs',
+      );
+    }
+  }
+
+  return null;
+}
 
 app.whenReady().then(
   async () => {
+    const serviceEnvironment =
+      await readServiceEnvironment();
+
+    const apiUrl =
+      resolveJobsApiUrl(
+        serviceEnvironment,
+      );
+
+    const apiKey =
+      process.env.SYNC_API_KEY?.trim() ??
+      serviceEnvironment.apiKey?.trim() ??
+      '';
+
+    const deviceId =
+      process.env.SYNC_AGENT_ID?.trim() ??
+      serviceEnvironment.agentId?.trim() ??
+      '';
+
+    const jobRuntime =
+      deviceId &&
+      apiUrl &&
+      apiKey
+        ? createDJSyncJobRuntime({
+            deviceId,
+            apiUrl,
+            apiKey,
+          })
+        : createDJSyncJobRuntime({
+            deviceId:
+              deviceId ||
+              'electron-unconfigured',
+          });
+
+    runtime =
+      createDJSyncRuntime({
+        jobRuntime,
+      });
+
+    applicationState =
+      createDJSyncApplicationState(
+        service,
+        runtime,
+      );
+
     registerApplicationEvents();
 
     registerIpcHandlers({
@@ -169,7 +266,28 @@ app.whenReady().then(
 
     applicationState.startPolling();
 
-    await applicationState.refresh();
+    /*
+     * Electron owns the runtime now. If the legacy LaunchAgent
+     * is still loaded/running, stop it before starting the local
+     * runtime so the Rekordbox watcher is not duplicated.
+     */
+    try {
+      await service.stop();
+    } catch {
+      // Legacy service shutdown must not prevent Electron startup.
+    }
+
+    try {
+      await applicationState.start();
+    } catch (error) {
+      console.error(
+        `DJ Sync autonomous runtime failed to start: ${
+          error instanceof Error
+            ? error.message
+            : String(error)
+        }`,
+      );
+    }
 
     app.on(
       'activate',
@@ -186,26 +304,45 @@ app.whenReady().then(
   },
 );
 
+let shuttingDown = false;
+
 app.on(
   'before-quit',
   (event) => {
-    if (
-      shuttingDown
-    ) {
+    if (shuttingDown) {
       return;
     }
 
     shuttingDown = true;
-
     event.preventDefault();
 
-    applicationState.stopPolling();
+    applicationState?.stopPolling();
 
-    void library
-      .close()
-      .finally(() => {
+    void (async () => {
+      try {
+        await applicationState?.stop();
+      } catch (error) {
+        console.error(
+          `DJ Sync autonomous runtime failed to stop cleanly: ${
+            error instanceof Error
+              ? error.message
+              : String(error)
+          }`,
+        );
+      }
+
+      try {
+        await runtime?.stop();
+      } catch {
+        // Application state normally owns the same runtime.
+      }
+
+      try {
+        await library.close();
+      } finally {
         app.quit();
-      });
+      }
+    })();
   },
 );
 

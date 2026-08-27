@@ -1,388 +1,278 @@
-import {
-  randomUUID,
-} from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
+import type { JobRepository } from './job-repository.js';
 import type {
-  JobRepository,
-} from './job-repository.js';
-
-import type {
+  JobEngineRunResult,
+  JobEngineSnapshot,
+  JobEngineStatus,
   JobHandler,
   JobRecord,
   ManagedJobType,
 } from './job-types.js';
 
 export interface JobEngineOptions {
-  repository:
-    JobRepository;
-
-  deviceId:
-    string;
-
-  concurrency?:
-    number;
-
-  leaseSeconds?:
-    number;
-
-  maxAttempts?:
-    number;
-
-  retryDelaySeconds?:
-    number;
-}
-
-export interface JobEngineRunResult {
-  claimed:
-    number;
-
-  completed:
-    number;
-
-  failed:
-    number;
-
-  skipped:
-    number;
+  repository: JobRepository;
+  deviceId: string;
+  concurrency?: number;
+  leaseSeconds?: number;
+  maxAttempts?: number;
+  retryDelaySeconds?: number;
 }
 
 export interface JobEngine {
-  runOnce():
-    Promise<JobEngineRunResult>;
-
-  start():
-    Promise<void>;
-
-  stop():
-    Promise<void>;
-
+  runOnce(): Promise<JobEngineRunResult>;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  snapshot(): JobEngineSnapshot;
+  subscribe(
+    listener: (snapshot: JobEngineSnapshot) => void,
+  ): () => void;
   register(
-    jobType:
-      ManagedJobType,
-    handler:
-      JobHandler,
-  ):
-    void;
+    jobType: ManagedJobType,
+    handler: JobHandler,
+  ): void;
 }
 
 export function createJobEngine(
-  options:
-    JobEngineOptions,
-):
-  JobEngine {
-  const deviceId =
-    options.deviceId.trim();
+  options: JobEngineOptions,
+): JobEngine {
+  const deviceId = options.deviceId.trim();
 
-  if (
-    !deviceId
-  ) {
-    throw new Error(
-      'SYNC_AGENT_ID is required.',
-    );
+  if (!deviceId) {
+    throw new Error('SYNC_AGENT_ID is required.');
   }
 
-  const concurrency =
-    options.concurrency ??
-    2;
+  const concurrency = options.concurrency ?? 2;
+  const leaseSeconds = options.leaseSeconds ?? 120;
+  const maxAttempts = options.maxAttempts ?? 10;
+  const retryDelaySeconds = options.retryDelaySeconds ?? 30;
+  const workerId = `${deviceId}:${randomUUID()}`;
 
-  const leaseSeconds =
-    options.leaseSeconds ??
-    120;
+  const handlers = new Map<ManagedJobType, JobHandler>();
+  const listeners = new Set<
+    (snapshot: JobEngineSnapshot) => void
+  >();
 
-  const maxAttempts =
-    options.maxAttempts ??
-    10;
+  let status: JobEngineStatus = 'stopped';
+  let startedAt: string | null = null;
+  let lastRunAt: string | null = null;
+  let lastRun: JobEngineRunResult | null = null;
+  let lastError: string | null = null;
+  let totals = {
+    claimed: 0,
+    completed: 0,
+    failed: 0,
+    skipped: 0,
+  };
+  let loopPromise: Promise<void> | null = null;
+  let running = false;
 
-  const retryDelaySeconds =
-    options.retryDelaySeconds ??
-    30;
+  const snapshot = (): JobEngineSnapshot => ({
+    status,
+    workerId,
+    startedAt,
+    lastRunAt,
+    lastRun,
+    lastError,
+    totals: { ...totals },
+  });
 
-  const workerId =
-    `${deviceId}:${randomUUID()}`;
+  const emit = (): void => {
+    const current = snapshot();
+    for (const listener of listeners) {
+      try {
+        listener(current);
+      } catch {
+        // A status listener must never break the worker.
+      }
+    }
+  };
 
-  const handlers =
-    new Map<
-      ManagedJobType,
-      JobHandler
-    >();
+  const handlerFor = (jobType: string): JobHandler | null =>
+    handlers.get(jobType as ManagedJobType) ?? null;
 
-  let running =
-    false;
+  const executeJob = async (
+    job: JobRecord,
+  ): Promise<'completed' | 'failed' | 'skipped'> => {
+    const handler = handlerFor(job.jobType);
 
-  let loopPromise:
-    Promise<void> | null =
-    null;
-
-  function handlerFor(
-    jobType:
-      string,
-  ):
-    JobHandler | null {
-    return (
-      handlers.get(
-        jobType as ManagedJobType,
-      ) ??
-      null
-    );
-  }
-
-  async function executeJob(
-    job:
-      JobRecord,
-  ):
-    Promise<
-      'completed' |
-      'failed' |
-      'skipped'
-    > {
-    const handler =
-      handlerFor(
-        job.jobType,
-      );
-
-    if (
-      handler ===
-      null
-    ) {
+    if (handler === null) {
       await options.repository.fail({
-        jobId:
-          job.id,
-
+        jobId: job.id,
         workerId,
-
-        error:
-          `No handler registered for job type: ${job.jobType}`,
-
-        retryable:
-          false,
-
+        error: `No handler registered for job type: ${job.jobType}`,
+        retryable: false,
         maxAttempts,
-
         retryDelaySeconds,
       });
-
       return 'skipped';
     }
 
     try {
-      /*
-       * The local handler validates/dispatches the job.
-       * The server-side execute RPC owns the atomic
-       * projection + completion transaction.
-       */
-      await handler.execute({
-        workerId,
-
-        job,
-      });
-
+      await handler.execute({ workerId, job });
       await options.repository.execute({
-        jobId:
-          job.id,
-
+        jobId: job.id,
         workerId,
       });
-
       return 'completed';
-    } catch (
-      error
-    ) {
+    } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : String(error);
-
+        error instanceof Error ? error.message : String(error);
       const stale =
-        message.includes(
-          'stale_job',
-        ) ||
-        message.includes(
-          'stale_intelligence_job:',
-        );
+        message.includes('stale_job') ||
+        message.includes('stale_intelligence_job:');
 
       try {
         await options.repository.fail({
-          jobId:
-            job.id,
-
+          jobId: job.id,
           workerId,
-
-          error:
-            message,
-
-          retryable:
-            !stale,
-
+          error: message,
+          retryable: !stale,
           maxAttempts,
-
           retryDelaySeconds,
         });
-      } catch {
-        /*
-         * If the execute transaction already completed
-         * the job and returned an unexpected client error,
-         * do not mask the original execution result.
-         */
+      } catch (failError) {
+        lastError =
+          failError instanceof Error
+            ? failError.message
+            : String(failError);
       }
 
       return 'failed';
     }
-  }
+  };
 
-  async function runOnce():
-    Promise<JobEngineRunResult> {
-    const jobs =
-      await options.repository.claim({
-        deviceId,
+  const runOnce = async (): Promise<JobEngineRunResult> => {
+    const jobs = await options.repository.claim({
+      deviceId,
+      workerId,
+      limit: concurrency,
+      leaseSeconds,
+    });
 
-        workerId,
-
-        limit:
-          concurrency,
-
-        leaseSeconds,
-      });
-
-    if (
-      jobs.length ===
-      0
-    ) {
-      return {
+    if (jobs.length === 0) {
+      lastRun = {
         claimed: 0,
         completed: 0,
         failed: 0,
         skipped: 0,
       };
+      lastRunAt = new Date().toISOString();
+      emit();
+      return lastRun;
     }
 
-    const results =
-      await Promise.all(
-        jobs.map(
-          executeJob,
-        ),
-      );
-
-    return {
-      claimed:
-        jobs.length,
-
-      completed:
-        results.filter(
-          (
-            result,
-          ) =>
-            result ===
-            'completed',
-        ).length,
-
-      failed:
-        results.filter(
-          (
-            result,
-          ) =>
-            result ===
-            'failed',
-        ).length,
-
-      skipped:
-        results.filter(
-          (
-            result,
-          ) =>
-            result ===
-            'skipped',
-        ).length,
+    const results = await Promise.all(jobs.map(executeJob));
+    const result: JobEngineRunResult = {
+      claimed: jobs.length,
+      completed: results.filter((value) => value === 'completed').length,
+      failed: results.filter((value) => value === 'failed').length,
+      skipped: results.filter((value) => value === 'skipped').length,
     };
-  }
 
-  async function loop():
-    Promise<void> {
-    while (
-      running
-    ) {
+    lastRun = result;
+    lastRunAt = new Date().toISOString();
+    lastError =
+      result.failed > 0
+        ? lastError
+        : null;
+
+    totals = {
+      claimed: totals.claimed + result.claimed,
+      completed: totals.completed + result.completed,
+      failed: totals.failed + result.failed,
+      skipped: totals.skipped + result.skipped,
+    };
+
+    emit();
+    return result;
+  };
+
+  const loop = async (): Promise<void> => {
+    while (running) {
       try {
-        const result =
-          await runOnce();
+        await runOnce();
+      } catch (error) {
+        lastError =
+          error instanceof Error ? error.message : String(error);
+        lastRunAt = new Date().toISOString();
+        emit();
 
-        if (
-          result.claimed ===
-          0
-        ) {
-          await new Promise<void>(
-            (
-              resolve,
-            ) => {
-              setTimeout(
-                resolve,
-                1000,
-              );
-            },
-          );
-        }
-      } catch {
-        await new Promise<void>(
-          (
-            resolve,
-          ) => {
-            setTimeout(
-              resolve,
-              2000,
-            );
-          },
-        );
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 2000);
+        });
+        continue;
+      }
+
+      if (running) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, 1000);
+        });
       }
     }
-  }
+  };
 
   return {
-    register(
-      jobType,
-      handler,
-    ) {
-      handlers.set(
-        jobType,
-        handler,
-      );
+    register(jobType, handler) {
+      handlers.set(jobType, handler);
     },
 
     runOnce,
 
+    snapshot,
+
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+
     async start() {
-      if (
-        running
-      ) {
+      if (status === 'running' || status === 'starting') {
         return;
       }
 
-      running =
-        true;
+      if (status === 'stopping') {
+        throw new Error('DJ Sync job engine is stopping.');
+      }
 
-      loopPromise =
-        loop();
+      status = 'starting';
+      startedAt = new Date().toISOString();
+      lastError = null;
+      emit();
+
+      running = true;
+      status = 'running';
+      loopPromise = loop();
+      emit();
     },
 
     async stop() {
-      if (
-        !running
-      ) {
+      if (status === 'stopped') {
         return;
       }
 
-      running =
-        false;
+      if (status === 'stopping') {
+        if (loopPromise !== null) {
+          await loopPromise;
+        }
+        return;
+      }
 
-      const current =
-        loopPromise;
+      status = 'stopping';
+      running = false;
+      emit();
 
-      loopPromise =
-        null;
+      const current = loopPromise;
+      loopPromise = null;
 
-      if (
-        current !==
-        null
-      ) {
+      if (current !== null) {
         await current;
       }
+
+      status = 'stopped';
+      emit();
     },
   };
 }

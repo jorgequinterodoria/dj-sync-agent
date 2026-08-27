@@ -1,37 +1,21 @@
-import {
-  test,
-} from 'node:test';
-
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
-import {
-  createDJSyncApplicationState,
-} from './dj-sync-application-state.js';
-
-type ServiceStatus =
-  Awaited<
-    ReturnType<
-      Parameters<
-        typeof createDJSyncApplicationState
-      >[0]['status']
-    >
-  >;
+import { createDJSyncApplicationState } from './dj-sync-application-state.js';
+import type {
+  DJSyncRuntime,
+  DJSyncRuntimeSnapshot,
+} from './dj-sync-runtime.js';
 
 function createServiceStub() {
-  let status: ServiceStatus = {
-    schemaVersion: 5,
-    generatedAt:
-      '2026-01-01T00:00:00.000Z',
+  const status = {
+    schemaVersion: 5 as const,
+    generatedAt: '2026-08-27T00:00:00.000Z',
 
     service: {
-      label:
-        'com.dj-sync-agent.sync-watch',
-
-      loaded: true,
-
-      state:
-        'stopped',
-
+      label: 'com.dj-sync-agent.sync-watch',
+      loaded: false,
+      state: 'stopped' as const,
       pid: null,
     },
 
@@ -41,113 +25,164 @@ function createServiceStub() {
     },
 
     sync: {
-      mode:
-        'watch',
-
-      status:
-        'completed',
-
+      mode: 'watch' as const,
+      status: 'completed' as const,
       sessionId: null,
-
-      cursor: {
-        rbLocalUsn: 123,
-        id: 'track-1',
-      },
+      cursor: null,
 
       totals: {
-        runs: 1,
-        batchesProcessed: 2,
-        scanned: 10,
-        processed: 10,
+        runs: 0,
+        batchesProcessed: 0,
+        scanned: 0,
+        processed: 0,
       },
 
       lastRun: null,
     },
 
     server: {
-      apiUrl:
-        'https://example.com',
-
+      apiUrl: 'https://example.com',
       configured: true,
       reachable: true,
       healthy: true,
-
-      latencyMs: 100,
-
-      version: '1.0.0',
-      region: 'test',
-      deploymentId: 'test',
-
+      latencyMs: 20,
+      version: 'test',
+      region: null,
+      deploymentId: null,
       error: null,
     },
   };
 
   return {
-    status: async () =>
-      status,
-
-    start: async () => {
-      status = {
-        ...status,
-
-        service: {
-          ...status.service,
-
-          state:
-            'running',
-
-          pid: 123,
-        },
-      };
-
+    async status() {
       return status;
     },
 
-    stop: async () => {
-      status = {
-        ...status,
-
-        service: {
-          ...status.service,
-
-          state:
-            'stopped',
-
-          pid: null,
-        },
-      };
-
+    async start() {
       return status;
     },
 
-    restart: async () => {
-      status = {
-        ...status,
+    async stop() {
+      return status;
+    },
 
-        service: {
-          ...status.service,
-
-          state:
-            'running',
-
-          pid: 456,
-        },
-      };
-
+    async restart() {
       return status;
     },
   };
 }
 
+function createRuntimeStub() {
+  let current: DJSyncRuntimeSnapshot = {
+    schemaVersion: 2 as const,
+
+    status: 'stopped' as const,
+
+    startedAt: null,
+
+    lastRun: null,
+
+    lastError: null,
+
+    jobs: {
+      configured: false,
+
+      status: 'disabled' as const,
+
+      workerId: null,
+
+      startedAt: null,
+
+      lastRunAt: null,
+
+      lastRun: null,
+
+      lastError: null,
+
+      totals: {
+        claimed: 0,
+        completed: 0,
+        failed: 0,
+        skipped: 0,
+      },
+    },
+  };
+
+  const listeners = new Set<
+    (value: typeof current) => void
+  >();
+
+  const emit = () => {
+    listeners.forEach(
+      (listener) => {
+        listener(current);
+      },
+    );
+  };
+
+  return {
+    runtime: {
+      async start() {
+        current = {
+          ...current,
+
+          status:
+            'running',
+
+          startedAt:
+            new Date().toISOString(),
+        };
+
+        emit();
+
+        return current;
+      },
+
+      async stop() {
+        current = {
+          ...current,
+
+          status:
+            'stopped',
+        };
+
+        emit();
+
+        return current;
+      },
+
+      status() {
+        return current;
+      },
+
+      subscribe(
+        listener: (
+          value: typeof current,
+        ) => void,
+      ) {
+        listeners.add(
+          listener,
+        );
+
+        return () =>
+          listeners.delete(
+            listener,
+          );
+      },
+    } satisfies DJSyncRuntime,
+  };
+}
+
 test(
-  'application state refreshes from the service',
+  'application state exposes runtime state',
   async () => {
-    const service =
-      createServiceStub();
+    const runtime =
+      createRuntimeStub();
 
     const state =
       createDJSyncApplicationState(
-        service,
+        createServiceStub(),
+        runtime.runtime,
       );
 
     const snapshot =
@@ -155,45 +190,82 @@ test(
 
     assert.equal(
       snapshot.schemaVersion,
-      1,
+      2,
     );
 
     assert.equal(
-      snapshot.service.service.state,
+      snapshot.runtime.status,
       'stopped',
-    );
-
-    assert.equal(
-      snapshot.service.database.exists,
-      true,
-    );
-
-    assert.equal(
-      snapshot.service.server.healthy,
-      true,
     );
   },
 );
 
 test(
-  'application state emits updates',
+  'application start controls autonomous runtime',
   async () => {
-    const service =
-      createServiceStub();
+    const runtime =
+      createRuntimeStub();
 
     const state =
       createDJSyncApplicationState(
-        service,
+        createServiceStub(),
+        runtime.runtime,
       );
 
-    const snapshots: string[] = [];
+    const snapshot =
+      await state.start();
+
+    assert.equal(
+      snapshot.runtime.status,
+      'running',
+    );
+  },
+);
+
+test(
+  'application stop controls autonomous runtime',
+  async () => {
+    const runtime =
+      createRuntimeStub();
+
+    const state =
+      createDJSyncApplicationState(
+        createServiceStub(),
+        runtime.runtime,
+      );
+
+    await state.start();
+
+    const snapshot =
+      await state.stop();
+
+    assert.equal(
+      snapshot.runtime.status,
+      'stopped',
+    );
+  },
+);
+
+test(
+  'application runtime updates are emitted',
+  async () => {
+    const runtime =
+      createRuntimeStub();
+
+    const state =
+      createDJSyncApplicationState(
+        createServiceStub(),
+        runtime.runtime,
+      );
+
+    const statuses: string[] =
+      [];
 
     const unsubscribe =
       state.subscribe(
         (snapshot) => {
-          snapshots.push(
-            snapshot.service
-              .service.state,
+          statuses.push(
+            snapshot.runtime.status,
           );
         },
       );
@@ -202,46 +274,10 @@ test(
 
     unsubscribe();
 
-    assert.deepEqual(
-      snapshots,
-      ['running'],
-    );
-  },
-);
-
-test(
-  'application state delegates lifecycle actions',
-  async () => {
-    const service =
-      createServiceStub();
-
-    const state =
-      createDJSyncApplicationState(
-        service,
-      );
-
-    const started =
-      await state.start();
-
-    assert.equal(
-      started.service.service.state,
-      'running',
-    );
-
-    const stopped =
-      await state.stop();
-
-    assert.equal(
-      stopped.service.service.state,
-      'stopped',
-    );
-
-    const restarted =
-      await state.restart();
-
-    assert.equal(
-      restarted.service.service.state,
-      'running',
+    assert.ok(
+      statuses.includes(
+        'running',
+      ),
     );
   },
 );

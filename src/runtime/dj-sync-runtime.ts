@@ -5,6 +5,7 @@ import {
   startSyncWatch,
   type SyncWatchController,
 } from '../sync/sync-watch.js';
+import type { DJSyncJobRuntime, DJSyncJobRuntimeSnapshot } from './dj-sync-job-runtime.js';
 
 export interface DJSyncRuntimeLastRun {
   schemaVersion: number;
@@ -28,15 +29,24 @@ export type DJSyncRuntimeStatus =
   | 'stopping';
 
 export interface DJSyncRuntimeSnapshot {
+  schemaVersion: 2;
   status: DJSyncRuntimeStatus;
   startedAt: string | null;
   lastRun: DJSyncRuntimeLastRun | null;
   lastError: string | null;
+  jobs: DJSyncJobRuntimeSnapshot;
 }
 
 export type DJSyncRuntimeListener = (
   snapshot: DJSyncRuntimeSnapshot,
 ) => void;
+
+export interface DJSyncRuntimeOptions {
+  jobRuntime?: DJSyncJobRuntime | null;
+  startSyncWatch?: (
+    onRun: (result: DJSyncRuntimeLastRun) => void,
+  ) => Promise<SyncWatchController>;
+}
 
 export interface DJSyncRuntime {
   start(): Promise<DJSyncRuntimeSnapshot>;
@@ -45,154 +55,177 @@ export interface DJSyncRuntime {
   subscribe(listener: DJSyncRuntimeListener): () => void;
 }
 
-export function createDJSyncRuntime(): DJSyncRuntime {
-  let runtimeStatus: DJSyncRuntimeStatus =
-    'stopped';
+const disabledJobs = (): DJSyncJobRuntimeSnapshot => ({
+  configured: false,
+  status: 'disabled',
+  workerId: null,
+  startedAt: null,
+  lastRunAt: null,
+  lastRun: null,
+  lastError: null,
+  totals: {
+    claimed: 0,
+    completed: 0,
+    failed: 0,
+    skipped: 0,
+  },
+});
 
-  let controller: SyncWatchController | null =
-    null;
-
+export function createDJSyncRuntime(
+  options: DJSyncRuntimeOptions = {},
+): DJSyncRuntime {
+  let runtimeStatus: DJSyncRuntimeStatus = 'stopped';
+  let controller: SyncWatchController | null = null;
   let startedAt: string | null = null;
-
-  let lastRun: DJSyncRuntimeLastRun | null =
-    null;
-
+  let lastRun: DJSyncRuntimeLastRun | null = null;
   let lastError: string | null = null;
 
-  const listeners =
-    new Set<DJSyncRuntimeListener>();
+  const jobRuntime = options.jobRuntime ?? null;
+  const listeners = new Set<DJSyncRuntimeListener>();
 
-  const snapshot =
-    (): DJSyncRuntimeSnapshot => ({
-      status: runtimeStatus,
-      startedAt,
-      lastRun,
-      lastError,
-    });
+  let stopPromise: Promise<DJSyncRuntimeSnapshot> | null = null;
+
+  const snapshot = (): DJSyncRuntimeSnapshot => ({
+    schemaVersion: 2,
+    status: runtimeStatus,
+    startedAt,
+    lastRun,
+    lastError,
+    jobs: jobRuntime?.snapshot() ?? disabledJobs(),
+  });
 
   const emit = (): void => {
-    const currentSnapshot = snapshot();
-
+    const current = snapshot();
     for (const listener of listeners) {
       try {
-        listener(currentSnapshot);
+        listener(current);
       } catch {
-        // A renderer/listener must never break
-        // the runtime itself.
+        // Runtime listeners must never break the coordinator.
       }
     }
   };
 
+  const startWatch =
+    options.startSyncWatch ??
+    (async (onRun) => {
+      const config = loadConfig();
+      const logger = createLogger(config);
+      const watchOptions = readSyncWatchOptions();
+      return startSyncWatch({
+        config,
+        logger,
+        ...watchOptions,
+        onRun,
+      });
+    });
+
   return {
-    async start(): Promise<DJSyncRuntimeSnapshot> {
-      if (
-        runtimeStatus === 'running' ||
-        runtimeStatus === 'starting'
-      ) {
+    async start() {
+      if (runtimeStatus === 'running' || runtimeStatus === 'starting') {
         return snapshot();
       }
 
       if (runtimeStatus === 'stopping') {
-        throw new Error(
-          'DJ Sync runtime is stopping.',
-        );
+        throw new Error('DJ Sync runtime is stopping.');
       }
 
       runtimeStatus = 'starting';
       startedAt = new Date().toISOString();
       lastError = null;
-
       emit();
 
       try {
-        const config = loadConfig();
-        const logger = createLogger(config);
-        const options = readSyncWatchOptions();
-
-        controller = await startSyncWatch({
-          config,
-          logger,
-          ...options,
-
-          onRun: (result) => {
-            lastRun = result;
-            lastError = null;
-
-            emit();
-          },
+        controller = await startWatch((result) => {
+          lastRun = result;
+          emit();
         });
 
+        if (jobRuntime !== null) {
+          try {
+            await jobRuntime.start();
+          } catch (error) {
+            lastError =
+              error instanceof Error ? error.message : String(error);
+            emit();
+          }
+        }
+
         runtimeStatus = 'running';
-
         emit();
-
         return snapshot();
       } catch (error) {
-        runtimeStatus = 'stopped';
+        try {
+          await controller?.close();
+        } catch {
+          // Preserve the startup error.
+        }
+
         controller = null;
-
+        runtimeStatus = 'stopped';
         lastError =
-          error instanceof Error
-            ? error.message
-            : String(error);
-
+          error instanceof Error ? error.message : String(error);
         emit();
-
         throw error;
       }
     },
 
-    async stop(): Promise<DJSyncRuntimeSnapshot> {
+    async stop() {
+      if (stopPromise !== null) {
+        return stopPromise;
+      }
+
       if (runtimeStatus === 'stopped') {
         return snapshot();
       }
 
-      if (runtimeStatus === 'stopping') {
-        return snapshot();
-      }
-
       runtimeStatus = 'stopping';
-
       emit();
 
-      try {
+      stopPromise = (async () => {
+        let stopError: unknown = null;
+
+        if (jobRuntime !== null) {
+          try {
+            await jobRuntime.stop();
+          } catch (error) {
+            stopError = error;
+          }
+        }
+
         if (controller !== null) {
-          await controller.close();
+          try {
+            await controller.close();
+          } catch (error) {
+            stopError ??= error;
+          }
         }
 
         controller = null;
         runtimeStatus = 'stopped';
 
-        emit();
+        if (stopError !== null) {
+          lastError =
+            stopError instanceof Error
+              ? stopError.message
+              : String(stopError);
+        }
 
+        emit();
         return snapshot();
-      } catch (error) {
-        lastError =
-          error instanceof Error
-            ? error.message
-            : String(error);
+      })();
 
-        runtimeStatus = 'stopped';
-        controller = null;
-
-        emit();
-
-        throw error;
+      try {
+        return await stopPromise;
+      } finally {
+        stopPromise = null;
       }
     },
 
-    status(): DJSyncRuntimeSnapshot {
-      return snapshot();
-    },
+    status: snapshot,
 
-    subscribe(
-      listener: DJSyncRuntimeListener,
-    ): () => void {
+    subscribe(listener) {
       listeners.add(listener);
-
-      return () => {
-        listeners.delete(listener);
-      };
+      return () => listeners.delete(listener);
     },
   };
 }

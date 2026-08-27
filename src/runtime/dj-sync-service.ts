@@ -41,9 +41,10 @@ function shellQuote(
   )}'`;
 }
 
-async function readServiceEnvironment(): Promise<{
+export async function readServiceEnvironment(): Promise<{
   apiUrl?: string;
   apiKey?: string;
+  agentId?: string;
 }> {
   try {
     await access(
@@ -57,7 +58,7 @@ async function readServiceEnvironment(): Promise<{
     'set -a',
     `source ${shellQuote(SERVICE_ENV_PATH)}`,
     'set +a',
-    'printf "%s\\0%s\\0" "$SYNC_API_URL" "$SYNC_API_KEY"',
+    'printf "%s\\0%s\\0%s\\0" "$SYNC_API_URL" "$SYNC_API_KEY" "$SYNC_AGENT_ID"',
   ].join('\n');
 
   try {
@@ -80,12 +81,18 @@ async function readServiceEnvironment(): Promise<{
     const apiKey =
       parts[1]?.trim();
 
+    const agentId =
+      parts[2]?.trim();
+
     return {
       ...(apiUrl
         ? { apiUrl }
         : {}),
       ...(apiKey
         ? { apiKey }
+        : {}),
+      ...(agentId
+        ? { agentId }
         : {}),
     };
   } catch {

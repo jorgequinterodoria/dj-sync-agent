@@ -575,18 +575,35 @@ function renderService(
   snapshot:
     DJSyncApplicationSnapshot,
 ): void {
-  const status =
-    snapshot.service.service;
+  const runtime =
+    snapshot.runtime;
 
-  const cardStatus:
-    CardStatus =
-    status.state ===
-    'running'
-      ? 'success'
-      : status.state ===
-          'stopped'
-        ? 'warning'
-        : 'unknown';
+  let cardStatus: CardStatus =
+    'unknown';
+
+  if (
+    runtime.lastError !== null &&
+    runtime.status === 'stopped'
+  ) {
+    cardStatus =
+      'danger';
+  } else if (
+    runtime.status === 'running'
+  ) {
+    cardStatus =
+      'success';
+  } else if (
+    runtime.status === 'starting' ||
+    runtime.status === 'stopping'
+  ) {
+    cardStatus =
+      'warning';
+  } else if (
+    runtime.status === 'stopped'
+  ) {
+    cardStatus =
+      'warning';
+  }
 
   setCardStatus(
     serviceCard,
@@ -596,7 +613,7 @@ function renderService(
   setBadge(
     serviceBadge,
     statusLabel(
-      status.state,
+      runtime.status,
     ),
     cardStatus,
   );
@@ -604,48 +621,54 @@ function renderService(
   setText(
     serviceState,
     statusLabel(
-      status.state,
+      runtime.status,
     ),
   );
 
+  const jobState =
+    runtime.jobs.status;
+
+  const jobDetail =
+    runtime.jobs.lastRun !== null
+      ? `Last cycle: ${formatNumber(
+          runtime.jobs.lastRun.claimed,
+        )} claimed · ${formatNumber(
+          runtime.jobs.lastRun.completed,
+        )} completed`
+      : runtime.jobs.configured
+        ? 'Worker configured · waiting for jobs'
+        : 'Worker not configured';
+
   setText(
     serviceDetail,
-    status.loaded
-      ? status.pid !==
-        null
-        ? `PID ${formatNumber(
-            status.pid,
-          )}`
-        : 'LaunchAgent loaded'
-      : 'LaunchAgent not loaded',
+    runtime.lastError ??
+      `${statusLabel(jobState)} · ${jobDetail}`,
   );
 
   setText(
     serviceLabel,
-    status.label,
+    'Electron-owned autonomous runtime',
   );
 
   setText(
     servicePid,
-    status.pid !== null
-      ? `PID ${formatNumber(
-          status.pid,
-        )}`
-      : 'PID —',
+    runtime.jobs.workerId !== null
+      ? `Worker ${runtime.jobs.workerId.slice(-12)}`
+      : 'Worker —',
   );
 
   setText(
     serviceControlState,
     statusLabel(
-      status.state,
+      runtime.status,
     ),
   );
 
   setText(
     serviceLoaded,
-    status.loaded
-      ? 'Yes'
-      : 'No',
+    runtime.jobs.configured
+      ? 'Configured'
+      : 'Disabled',
   );
 
   setText(
@@ -662,21 +685,26 @@ function renderService(
     ),
   );
 
+  const starting =
+    runtime.status ===
+    'starting';
+
   const running =
-    status.state ===
+    runtime.status ===
     'running';
 
-  const installed =
-    status.loaded ||
-    status.state !==
-      'unknown';
+  const stopping =
+    runtime.status ===
+    'stopping';
 
   if (
     startButton !==
     null
   ) {
     startButton.disabled =
-      running;
+      running ||
+      starting ||
+      stopping;
   }
 
   if (
@@ -684,7 +712,8 @@ function renderService(
     null
   ) {
     stopButton.disabled =
-      !running;
+      !running ||
+      stopping;
   }
 
   if (
@@ -692,7 +721,8 @@ function renderService(
     null
   ) {
     restartButton.disabled =
-      !installed;
+      starting ||
+      stopping;
   }
 }
 
@@ -1093,29 +1123,32 @@ function renderActivity(
         : 'danger',
   });
 
+  const runtime =
+    snapshot.runtime;
+
   activities.push({
     title:
-      service.state ===
-      'running'
-        ? 'Service running'
-        : service.state ===
-            'stopped'
-          ? 'Service stopped'
-          : 'Service state unknown',
+      runtime.status === 'running'
+        ? 'Agent runtime running'
+        : runtime.status === 'stopped'
+          ? 'Agent runtime stopped'
+          : `Agent runtime ${runtime.status}`,
 
     detail:
-      service.pid !== null
-        ? `PID ${service.pid}`
-        : service.label,
+      runtime.jobs.lastRun !== null
+        ? `${formatNumber(
+            runtime.jobs.lastRun.completed,
+          )} jobs completed in last cycle`
+        : runtime.jobs.configured
+          ? 'Job worker configured'
+          : 'Job worker not configured',
 
     status:
-      service.state ===
-      'running'
+      runtime.status === 'running'
         ? 'success'
-        : service.state ===
-            'stopped'
-          ? 'warning'
-          : 'unknown',
+        : runtime.lastError !== null
+          ? 'danger'
+          : 'warning',
   });
 
   activityList.innerHTML =
