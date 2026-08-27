@@ -1,58 +1,60 @@
-# FASE 31 — Action Preview UI + Human-in-the-Loop
+# FASE 31 — Production UI / UX
 
 ## Objetivo
 
-Llevar el Approval Gate a una frontera usable desde Electron: el Copilot puede mostrar una acción propuesta, pero la ejecución queda bloqueada hasta una aprobación humana explícita.
+Crear una superficie de producción para Electron que haga visible el estado real del sistema sin exponer infraestructura ni secretos en el renderer.
 
-## Flujo
+## Incluye
 
-```text
-Copilot
-  ↓
-ActionPreview
-  ↓
-UI
-  ↓
-Approve / Reject
-  ↓
-Approval Gate
-  ↓
-Execute
-  ↓
-Audit
-```
+- shell de aplicación;
+- estado de conexión;
+- estado de sincronización;
+- Now Playing;
+- Copilot;
+- historial de mensajes;
+- composer con teclado;
+- Action Preview;
+- Approve / Reject;
+- activity timeline;
+- estados vacíos;
+- errores visibles;
+- diseño responsive;
+- soporte para `prefers-reduced-motion`;
+- etiquetas accesibles;
+- escaping de contenido dinámico;
+- límites visuales para actividad;
+- separación explícita entre modelo de UI y callbacks IPC.
 
-## Componentes
+## Boundary
 
-- IPC contracts for prepare/approve/reject/execute.
-- `CopilotActionIpc`.
-- `DJSyncCopilotActionController`.
-- Action Card renderer.
-- CSS para preview y estados.
+El renderer recibe un `ProductionUiSnapshot` y callbacks. No conoce:
 
-## Seguridad
+- Supabase;
+- SQLCipher;
+- API keys;
+- service-role keys;
+- providers de IA;
+- repositorios;
+- ejecutores del Core.
 
-- El renderer no recibe API keys ni service-role secrets.
-- El renderer no ejecuta el executor.
-- Approval sigue vinculada al preview, action hash, deviceId y requestId.
-- La UI deshabilita aprobación/rechazo cuando el estado ya no es `pending`.
-- La ejecución requiere un approval token válido.
-- Los errores se convierten en estados estructurados recuperables.
-- No se añaden migraciones.
+La aplicación debe conectar estos callbacks a los contratos IPC ya existentes.
 
-## Supabase
+## Integración
 
-No ejecutar:
+El entrypoint del renderer existente debe:
 
-```bash
-pnpm supabase db push
-```
+1. localizar el root visual;
+2. crear `ProductionUiCallbacks`;
+3. montar `mountProductionUi(...)`;
+4. alimentar `handle.update(snapshot)` cuando cambie el estado.
 
-No hay Edge Function nueva.
+La Fase 31 no reemplaza el IPC existente ni crea un segundo backend.
 
-## Nota de integración
+## Seguridad UI
 
-La estructura se añade como frontera independiente. La conexión final con el `contextBridge`/bootstrap existente debe hacerse sobre los canales públicos ya existentes del proyecto, sin reemplazar `main.ts` o el renderer actual.
+El contenido dinámico se escapa antes de insertarse en HTML. La UI de aprobación solo se muestra cuando existe `pendingAction`.
+
+La lógica de autorización continúa en main/runtime; el renderer solamente comunica la intención mediante callbacks.
 
 ## Validación
 
@@ -63,3 +65,6 @@ pnpm build
 pnpm electron:build
 git diff --check
 ```
+
+No hay migración Supabase asociada a esta fase.
+No ejecutar `pnpm supabase db push`.
