@@ -1,0 +1,59 @@
+.copilot-action-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  margin: 8px 0;
+  border: 1px solid #475569;
+  border-radius: 12px;
+  background: #0f172a;
+}
+
+.copilot-action-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.copilot-action-card__title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.copilot-action-card__risk {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.copilot-action-card__reason,
+.copilot-action-card__resources,
+.copilot-action-card__meta {
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.copilot-action-card__resources {
+  white-space: pre-line;
+}
+
+.copilot-action-card__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.copilot-action-card__actions button {
+  flex: 1;
+  min-height: 38px;
+  border: 0;
+  border-radius: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.copilot-action-card__actions button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
