@@ -1,10 +1,19 @@
 import type { ToolRegistry } from '../tools/tool-registry.js';
 import type { ToolResult } from '../tools/tool-types.js';
 import type { ToolExecutionContext } from '../tools/tool-types.js';
+import type {
+  CopilotContextProvider,
+} from './copilot-agent-context.js';
 
 export interface CopilotMessage {
-  readonly role: 'system' | 'user' | 'assistant' | 'tool';
+  readonly role:
+    | 'system'
+    | 'user'
+    | 'assistant'
+    | 'tool';
+
   readonly content: string;
+
   readonly toolCallId?: string;
   readonly toolName?: string;
 }
@@ -22,6 +31,7 @@ export interface CopilotModelResponse {
 
 export interface CopilotModelRequest {
   readonly messages: readonly CopilotMessage[];
+
   readonly tools: readonly {
     readonly name: string;
     readonly description: string;
@@ -40,7 +50,11 @@ export interface CopilotAgentOptions {
   readonly model: CopilotModel;
   readonly registry: ToolRegistry;
   readonly toolContext: Omit<ToolExecutionContext, 'signal'>;
+
   readonly systemPrompt?: string;
+
+  readonly contextProvider?: CopilotContextProvider;
+
   readonly maxToolCalls?: number;
   readonly maxTurns?: number;
   readonly timeoutMs?: number;
@@ -71,5 +85,6 @@ export interface CopilotAgentError {
     | 'tool_limit'
     | 'turn_limit'
     | 'model_error';
+
   readonly message: string;
 }

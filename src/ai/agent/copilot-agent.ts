@@ -1,6 +1,11 @@
 import {
   parseToolCalls,
 } from './tool-call-parser.js';
+
+import {
+  serializeCopilotContext,
+} from './copilot-agent-context.js';
+
 import type {
   CopilotAgentOptions,
   CopilotAgentRunInput,
@@ -20,7 +25,9 @@ function withTimeout<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   if (signal?.aborted) {
-    return Promise.reject(new Error('Copilot request aborted.'));
+    return Promise.reject(
+      new Error('Copilot request aborted.'),
+    );
   }
 
   return new Promise<T>((resolve, reject) => {
@@ -28,32 +35,60 @@ function withTimeout<T>(
 
     const timer = setTimeout(() => {
       if (settled) return;
+
       settled = true;
-      reject(new Error('Copilot request timed out.'));
+
+      reject(
+        new Error(
+          'Copilot request timed out.',
+        ),
+      );
     }, timeoutMs);
 
     const onAbort = (): void => {
       if (settled) return;
+
       settled = true;
       clearTimeout(timer);
-      reject(new Error('Copilot request aborted.'));
+
+      reject(
+        new Error(
+          'Copilot request aborted.',
+        ),
+      );
     };
 
-    signal?.addEventListener('abort', onAbort, { once: true });
+    signal?.addEventListener(
+      'abort',
+      onAbort,
+      { once: true },
+    );
 
     promise.then(
       (value) => {
         if (settled) return;
+
         settled = true;
         clearTimeout(timer);
-        signal?.removeEventListener('abort', onAbort);
+
+        signal?.removeEventListener(
+          'abort',
+          onAbort,
+        );
+
         resolve(value);
       },
       (error: unknown) => {
         if (settled) return;
+
         settled = true;
         clearTimeout(timer);
-        signal?.removeEventListener('abort', onAbort);
+
+        signal?.removeEventListener(
+          'abort',
+          onAbort,
+        );
+
         reject(error);
       },
     );
@@ -63,11 +98,13 @@ function withTimeout<T>(
 function buildToolManifest(
   options: CopilotAgentOptions,
 ): CopilotModelRequest['tools'] {
-  return options.registry.list().map((tool) => ({
-    name: tool.name,
-    description: tool.description,
-    inputSchema: tool.inputSchema,
-  }));
+  return options.registry.list().map(
+    (tool) => ({
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+    }),
+  );
 }
 
 function ensureMessage(
@@ -93,12 +130,14 @@ function normalizedLimits(
         options.maxToolCalls ??
           DEFAULT_MAX_TOOL_CALLS,
       ),
+
     maxTurns:
       Math.max(
         1,
         options.maxTurns ??
           DEFAULT_MAX_TURNS,
       ),
+
     timeoutMs:
       Math.max(
         1,
@@ -111,17 +150,27 @@ function normalizedLimits(
 export class CopilotAgent {
   private readonly options: CopilotAgentOptions;
 
-  public constructor(options: CopilotAgentOptions) {
+  public constructor(
+    options: CopilotAgentOptions,
+  ) {
     if (!options.model) {
-      throw new Error('Copilot model is required.');
+      throw new Error(
+        'Copilot model is required.',
+      );
     }
 
     if (!options.registry) {
-      throw new Error('Copilot tool registry is required.');
+      throw new Error(
+        'Copilot tool registry is required.',
+      );
     }
 
-    if (!options.toolContext.deviceId.trim()) {
-      throw new Error('Copilot device id is required.');
+    if (
+      !options.toolContext.deviceId.trim()
+    ) {
+      throw new Error(
+        'Copilot device id is required.',
+      );
     }
 
     this.options = options;
@@ -130,15 +179,22 @@ export class CopilotAgent {
   public async run(
     input: CopilotAgentRunInput,
   ): Promise<CopilotAgentRunResult> {
-    const userMessage = input.userMessage.trim();
+    const userMessage =
+      input.userMessage.trim();
 
     if (!userMessage) {
-      throw new Error('Copilot user message is required.');
+      throw new Error(
+        'Copilot user message is required.',
+      );
     }
 
-    const limits = normalizedLimits(this.options);
+    const limits =
+      normalizedLimits(this.options);
+
     const deadline =
-      AbortSignal.timeout(limits.timeoutMs);
+      AbortSignal.timeout(
+        limits.timeoutMs,
+      );
 
     const signal = input.signal
       ? AbortSignal.any([
@@ -159,13 +215,36 @@ export class CopilotAgent {
       });
     }
 
+    if (
+      this.options.contextProvider
+    ) {
+      const context =
+        await withTimeout(
+          this.options.contextProvider.build({
+            userMessage,
+          }),
+          limits.timeoutMs,
+          signal,
+        );
+
+      messages.push({
+        role: 'system',
+        content:
+          serializeCopilotContext(
+            context,
+          ),
+      });
+    }
+
     messages.push({
       role: 'user',
       content: userMessage,
     });
 
     const toolManifest =
-      buildToolManifest(this.options);
+      buildToolManifest(
+        this.options,
+      );
 
     const toolExecutions = [];
     let turns = 0;
@@ -173,24 +252,30 @@ export class CopilotAgent {
     while (true) {
       turns += 1;
 
-      if (turns > limits.maxTurns) {
-        throw new Error('Copilot turn limit exceeded.');
+      if (
+        turns > limits.maxTurns
+      ) {
+        throw new Error(
+          'Copilot turn limit exceeded.',
+        );
       }
 
-      let response: CopilotModelResponse;
+      let response:
+        CopilotModelResponse;
 
       try {
-        response = await withTimeout(
-          this.options.model.generate(
-            {
-              messages: [...messages],
-              tools: toolManifest,
-            },
+        response =
+          await withTimeout(
+            this.options.model.generate(
+              {
+                messages: [...messages],
+                tools: toolManifest,
+              },
+              signal,
+            ),
+            limits.timeoutMs,
             signal,
-          ),
-          limits.timeoutMs,
-          signal,
-        );
+          );
       } catch (error: unknown) {
         const message =
           error instanceof Error
@@ -198,22 +283,30 @@ export class CopilotAgent {
             : String(error);
 
         throw new Error(
-          /timed out|aborted/i.test(message)
+          /timed out|aborted/i.test(
+            message,
+          )
             ? `Copilot timeout: ${message}`
             : `Copilot model error: ${message}`,
         );
       }
 
       const parsed =
-        parseToolCalls(response.toolCalls);
+        parseToolCalls(
+          response.toolCalls,
+        );
 
-      if (parsed.errors.length > 0) {
+      if (
+        parsed.errors.length > 0
+      ) {
         throw new Error(
           parsed.errors.join(' '),
         );
       }
 
-      if (parsed.calls.length === 0) {
+      if (
+        parsed.calls.length === 0
+      ) {
         const finalResponse =
           response.content.trim();
 
@@ -224,7 +317,9 @@ export class CopilotAgent {
         }
 
         messages.push(
-          ensureMessage(finalResponse),
+          ensureMessage(
+            finalResponse,
+          ),
         );
 
         return {
@@ -241,7 +336,9 @@ export class CopilotAgent {
           response.content.trim(),
       });
 
-      for (const call of parsed.calls) {
+      for (
+        const call of parsed.calls
+      ) {
         if (
           toolExecutions.length >=
           limits.maxToolCalls
@@ -275,7 +372,8 @@ export class CopilotAgent {
           role: 'tool',
           toolCallId: call.id,
           toolName: call.name,
-          content: JSON.stringify(result),
+          content:
+            JSON.stringify(result),
         });
       }
     }
