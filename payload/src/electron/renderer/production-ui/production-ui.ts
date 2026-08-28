@@ -180,7 +180,7 @@ function renderAction(
   const action =
     snapshot.pendingAction;
 
-  if (!action) {
+  if (!action || action.status !== 'pending') {
     return '';
   }
 
@@ -757,27 +757,892 @@ function installStyles(): void {
     return;
   }
 
-  const stylesheet =
+  const style =
     document.createElement(
-      'link',
+      'style',
     );
 
-  stylesheet.id =
+  style.id =
     STYLE_ID;
 
-  stylesheet.rel =
-    'stylesheet';
+  style.textContent = `
+    :root {
+      color-scheme: dark;
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
 
-  stylesheet.href =
-    new URL(
-      './production-ui.css',
-      import.meta.url,
-    ).href;
+      --ds-bg:
+        #080b12;
+
+      --ds-surface:
+        #10151f;
+
+      --ds-surface-raised:
+        #151c29;
+
+      --ds-border:
+        rgba(255,255,255,.09);
+
+      --ds-border-strong:
+        rgba(255,255,255,.14);
+
+      --ds-text:
+        #f4f7fb;
+
+      --ds-text-soft:
+        #aab4c3;
+
+      --ds-text-muted:
+        #758093;
+
+      --ds-accent:
+        #7c9cff;
+
+      --ds-success:
+        #4fd1a5;
+
+      --ds-warning:
+        #e9bd69;
+
+      --ds-danger:
+        #ee7b87;
+
+      --ds-radius:
+        18px;
+
+      --ds-shadow:
+        0 20px 60px
+        rgba(0,0,0,.25);
+    }
+
+    .ds-shell {
+      min-height: 100vh;
+      background:
+        radial-gradient(
+          1200px 600px at 70% -10%,
+          rgba(124,156,255,.13),
+          transparent 65%
+        ),
+        var(--ds-bg);
+      color: var(--ds-text);
+    }
+
+    .ds-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      min-height: 72px;
+      padding: 12px 28px;
+
+      border-bottom:
+        1px solid var(--ds-border);
+
+      background:
+        rgba(8,11,18,.88);
+
+      backdrop-filter:
+        blur(20px);
+    }
+
+    .ds-brand,
+    .ds-topbar-status,
+    .ds-sync-controls,
+    .ds-action-buttons,
+    .ds-track-row,
+    .ds-composer-footer {
+      display: flex;
+      align-items: center;
+    }
+
+    .ds-brand {
+      gap: 12px;
+    }
+
+    .ds-brand-mark {
+      display: grid;
+      place-items: center;
+
+      width: 38px;
+      height: 38px;
+
+      border-radius: 11px;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(124,156,255,.95),
+          rgba(79,209,165,.85)
+        );
+
+      color: #071019;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .08em;
+    }
+
+    .ds-brand strong,
+    .ds-brand span {
+      display: block;
+    }
+
+    .ds-brand strong {
+      font-size: 14px;
+    }
+
+    .ds-brand span {
+      margin-top: 2px;
+      color: var(--ds-text-muted);
+      font-size: 11px;
+    }
+
+    .ds-topbar-status {
+      gap: 10px;
+    }
+
+    .ds-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+
+      min-height: 30px;
+      padding: 0 10px;
+
+      border:
+        1px solid var(--ds-border);
+
+      border-radius: 999px;
+
+      background:
+        rgba(255,255,255,.035);
+
+      color: var(--ds-text-soft);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+
+    .ds-status-pill-connected,
+    .ds-status-pill-success {
+      color: var(--ds-success);
+    }
+
+    .ds-status-pill-disconnected {
+      color: var(--ds-danger);
+    }
+
+    .ds-status-pill-degraded {
+      color: var(--ds-warning);
+    }
+
+    .ds-status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow:
+        0 0 12px currentColor;
+    }
+
+    .ds-status-dot-muted {
+      color: var(--ds-text-muted);
+      box-shadow: none;
+    }
+
+    .ds-icon-button {
+      display: grid;
+      place-items: center;
+
+      width: 32px;
+      height: 32px;
+
+      border:
+        1px solid var(--ds-border);
+
+      border-radius: 10px;
+
+      background:
+        rgba(255,255,255,.025);
+
+      color: var(--ds-text-soft);
+
+      cursor: pointer;
+    }
+
+    .ds-icon-button:hover {
+      color: var(--ds-text);
+      border-color:
+        var(--ds-border-strong);
+    }
+
+    .ds-main {
+      width:
+        min(
+          1440px,
+          calc(100% - 40px)
+        );
+
+      margin: 0 auto;
+      padding: 36px 0 56px;
+    }
+
+    .ds-page-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 28px;
+      margin-bottom: 26px;
+    }
+
+    .ds-page-heading h1 {
+      margin: 7px 0 8px;
+      font-size:
+        clamp(30px, 4vw, 48px);
+      line-height: 1.05;
+      letter-spacing: -.04em;
+    }
+
+    .ds-page-heading p {
+      max-width: 680px;
+      margin: 0;
+      color: var(--ds-text-soft);
+      line-height: 1.6;
+    }
+
+    .ds-eyebrow {
+      color: var(--ds-text-muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .15em;
+    }
+
+    .ds-sync-summary {
+      min-width: 270px;
+      padding: 18px;
+
+      border:
+        1px solid var(--ds-border);
+
+      border-radius:
+        var(--ds-radius);
+
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,.04),
+          rgba(255,255,255,.018)
+        );
+
+      box-shadow: var(--ds-shadow);
+    }
+
+    .ds-sync-summary > span,
+    .ds-sync-summary > strong {
+      display: block;
+    }
+
+    .ds-sync-label {
+      color: var(--ds-text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+    }
+
+    .ds-sync-summary strong {
+      margin: 5px 0;
+      font-size: 22px;
+      letter-spacing: -.02em;
+    }
+
+    .ds-sync-summary > span:last-of-type {
+      margin-bottom: 14px;
+      color: var(--ds-text-soft);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .ds-layout {
+      display: grid;
+      grid-template-columns:
+        minmax(0, 1.7fr)
+        minmax(300px, .8fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .ds-primary-column,
+    .ds-secondary-column {
+      display: grid;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    .ds-card {
+      overflow: hidden;
+      padding: 20px;
+
+      border:
+        1px solid var(--ds-border);
+
+      border-radius:
+        var(--ds-radius);
+
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,.035),
+          rgba(255,255,255,.018)
+        );
+
+      box-shadow:
+        0 18px 60px
+        rgba(0,0,0,.2);
+    }
+
+    .ds-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .ds-card-title {
+      margin: 5px 0 0;
+      font-size: 20px;
+      letter-spacing: -.025em;
+    }
+
+    .ds-subtitle {
+      margin: 4px 0 0;
+      color: var(--ds-text-soft);
+      font-size: 13px;
+    }
+
+    .ds-muted {
+      color: var(--ds-text-muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .ds-track-row {
+      gap: 16px;
+    }
+
+    .ds-track-art {
+      flex: 0 0 auto;
+      width: 92px;
+      height: 92px;
+      object-fit: cover;
+      border-radius: 14px;
+      border:
+        1px solid var(--ds-border);
+      background:
+        linear-gradient(
+          135deg,
+          rgba(124,156,255,.25),
+          rgba(79,209,165,.08)
+        );
+    }
+
+    .ds-track-art-empty {
+      display: grid;
+      place-items: center;
+      color: var(--ds-text);
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .ds-track-meta {
+      display: grid;
+      grid-template-columns:
+        repeat(2, minmax(100px, 1fr));
+      gap: 10px;
+      flex: 1;
+    }
+
+    .ds-track-stat {
+      padding: 12px 14px;
+      border:
+        1px solid var(--ds-border);
+      border-radius: 12px;
+      background:
+        rgba(255,255,255,.02);
+    }
+
+    .ds-track-stat span,
+    .ds-track-stat strong {
+      display: block;
+    }
+
+    .ds-track-stat span {
+      color: var(--ds-text-muted);
+      font-size: 10px;
+      letter-spacing: .1em;
+    }
+
+    .ds-track-stat strong {
+      margin-top: 5px;
+      font-size: 16px;
+    }
+
+    .ds-message-list {
+      display: grid;
+      gap: 16px;
+      min-height: 160px;
+      max-height: 520px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .ds-message {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .ds-message-avatar {
+      display: grid;
+      place-items: center;
+
+      flex: 0 0 auto;
+
+      width: 30px;
+      height: 30px;
+
+      border-radius: 9px;
+
+      background:
+        rgba(255,255,255,.05);
+
+      color: var(--ds-text-soft);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .06em;
+    }
+
+    .ds-message-assistant .ds-message-avatar {
+      background:
+        rgba(124,156,255,.14);
+      color: var(--ds-accent);
+    }
+
+    .ds-message-body {
+      min-width: 0;
+    }
+
+    .ds-message-role {
+      margin-bottom: 3px;
+      color: var(--ds-text-muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .ds-message-content {
+      color: var(--ds-text-soft);
+      font-size: 13px;
+      line-height: 1.62;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .ds-composer {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top:
+        1px solid var(--ds-border);
+    }
+
+    .ds-composer textarea {
+      width: 100%;
+      resize: vertical;
+      min-height: 74px;
+
+      padding: 13px 14px;
+
+      border:
+        1px solid var(--ds-border);
+
+      border-radius: 14px;
+
+      outline: none;
+
+      background:
+        rgba(255,255,255,.025);
+
+      color: var(--ds-text);
+      font: inherit;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .ds-composer textarea:focus {
+      border-color:
+        rgba(124,156,255,.55);
+
+      box-shadow:
+        0 0 0 3px
+        rgba(124,156,255,.10);
+    }
+
+    .ds-composer-footer {
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .ds-composer-hint {
+      color: var(--ds-text-muted);
+      font-size: 10px;
+    }
+
+    .ds-button {
+      min-height: 36px;
+      padding: 0 14px;
+
+      border:
+        1px solid transparent;
+
+      border-radius: 10px;
+
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+
+      cursor: pointer;
+      transition:
+        transform .15s ease,
+        opacity .15s ease,
+        border-color .15s ease,
+        background .15s ease;
+    }
+
+    .ds-button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .ds-button:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    .ds-button-primary {
+      border-color:
+        rgba(124,156,255,.35);
+
+      background:
+        rgba(124,156,255,.16);
+
+      color: #dce5ff;
+    }
+
+    .ds-button-secondary {
+      border-color:
+        var(--ds-border);
+
+      background:
+        rgba(255,255,255,.03);
+
+      color: var(--ds-text-soft);
+    }
+
+    .ds-action-card-write {
+      border-color:
+        rgba(124,156,255,.32);
+    }
+
+    .ds-action-card-review {
+      border-color:
+        rgba(233,189,105,.38);
+    }
+
+    .ds-risk-badge,
+    .ds-status-pill-success {
+      color: var(--ds-success);
+    }
+
+    .ds-risk-badge {
+      padding: 5px 8px;
+      border:
+        1px solid rgba(233,189,105,.25);
+      border-radius: 999px;
+      background:
+        rgba(233,189,105,.08);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .1em;
+    }
+
+    .ds-action-description {
+      margin: 0;
+      color: var(--ds-text-soft);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .ds-resource-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .ds-resource-chip {
+      padding: 5px 8px;
+      border:
+        1px solid var(--ds-border);
+      border-radius: 999px;
+      color: var(--ds-text-muted);
+      font-size: 10px;
+    }
+
+    .ds-action-safety {
+      margin: 14px 0 0;
+      color: var(--ds-text-muted);
+      font-size: 11px;
+    }
+
+    .ds-action-buttons {
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .ds-activity-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .ds-activity-item {
+      display: grid;
+      grid-template-columns:
+        auto minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .ds-activity-indicator {
+      width: 7px;
+      height: 7px;
+      margin-top: 5px;
+      border-radius: 50%;
+      background: var(--ds-text-muted);
+    }
+
+    .ds-activity-success {
+      background: var(--ds-success);
+    }
+
+    .ds-activity-warning {
+      background: var(--ds-warning);
+    }
+
+    .ds-activity-error {
+      background: var(--ds-danger);
+    }
+
+    .ds-activity-body strong,
+    .ds-activity-body span {
+      display: block;
+    }
+
+    .ds-activity-body strong {
+      color: var(--ds-text-soft);
+      font-size: 11px;
+    }
+
+    .ds-activity-body span {
+      margin-top: 2px;
+      color: var(--ds-text-muted);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    .ds-activity-item time {
+      color: var(--ds-text-muted);
+      font-size: 9px;
+      white-space: nowrap;
+    }
+
+    .ds-status-card {
+      padding-bottom: 8px;
+    }
+
+    .ds-status-grid {
+      display: grid;
+      grid-template-columns:
+        repeat(2, minmax(0,1fr));
+      gap: 9px;
+      margin-top: 16px;
+    }
+
+    .ds-status-grid > div {
+      padding: 12px;
+      border:
+        1px solid var(--ds-border);
+      border-radius: 12px;
+      background:
+        rgba(255,255,255,.02);
+    }
+
+    .ds-status-grid span,
+    .ds-status-grid strong {
+      display: block;
+    }
+
+    .ds-status-grid span {
+      color: var(--ds-text-muted);
+      font-size: 9px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .ds-status-grid strong {
+      margin-top: 5px;
+      font-size: 12px;
+    }
+
+    .ds-empty-state {
+      display: grid;
+      place-items: center;
+      gap: 7px;
+      min-height: 155px;
+      text-align: center;
+      color: var(--ds-text-muted);
+    }
+
+    .ds-empty-state strong {
+      color: var(--ds-text-soft);
+      font-size: 13px;
+    }
+
+    .ds-empty-state span {
+      max-width: 340px;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .ds-empty-icon {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background:
+        rgba(124,156,255,.12);
+      color: var(--ds-accent);
+    }
+
+    .ds-error-banner {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      margin-bottom: 20px;
+      padding: 12px 14px;
+      border:
+        1px solid rgba(238,123,135,.25);
+      border-radius: 12px;
+      background:
+        rgba(238,123,135,.07);
+      color: var(--ds-text-soft);
+      font-size: 12px;
+    }
+
+    .ds-error-banner strong {
+      color: var(--ds-danger);
+    }
+
+    .ds-sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    @media (max-width: 1000px) {
+      .ds-page-heading {
+        flex-direction: column;
+      }
+
+      .ds-sync-summary {
+        min-width: 0;
+      }
+
+      .ds-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .ds-topbar {
+        padding: 10px 14px;
+      }
+
+      .ds-main {
+        width:
+          min(
+            100% - 24px,
+            720px
+          );
+        padding-top: 24px;
+      }
+
+      .ds-card {
+        padding: 16px;
+      }
+
+      .ds-track-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .ds-composer-footer {
+        align-items: flex-end;
+        flex-direction: column;
+      }
+
+      .ds-action-buttons,
+      .ds-sync-controls {
+        width: 100%;
+      }
+
+      .ds-action-buttons .ds-button,
+      .ds-sync-controls .ds-button {
+        flex: 1;
+      }
+
+      .ds-page-heading h1 {
+        font-size: 34px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ds-button {
+        transition: none;
+      }
+    }
+  `;
 
   document.head.appendChild(
-    stylesheet,
+    style,
   );
 }
+
 export interface ProductionUiHandle {
   update(
     snapshot: ProductionUiSnapshot,
@@ -804,45 +1669,6 @@ export function mountProductionUi(
         return;
       }
 
-      /*
-       * The production UI receives live application updates (sync/runtime
-       * state, Copilot state, activity, etc.). Those updates intentionally
-       * trigger a full shell render, but the Copilot composer is a transient
-       * user-editing surface and must not lose its draft on every update.
-       *
-       * Capture the existing textarea state before replacing the DOM, then
-       * restore it after wiring events. This keeps text, focus, caret position
-       * and scroll position stable while the rest of the workspace refreshes.
-       */
-      const previousComposer =
-        options.root.querySelector<
-          HTMLTextAreaElement
-        >(
-          '#ds-copilot-input',
-        );
-
-      const composerDraft =
-        previousComposer?.value ??
-        '';
-
-      const composerWasFocused =
-        previousComposer !==
-          null &&
-        document.activeElement ===
-          previousComposer;
-
-      const selectionStart =
-        previousComposer?.selectionStart ??
-        composerDraft.length;
-
-      const selectionEnd =
-        previousComposer?.selectionEnd ??
-        composerDraft.length;
-
-      const scrollTop =
-        previousComposer?.scrollTop ??
-        0;
-
       options.root.innerHTML =
         renderShell(
           current,
@@ -860,50 +1686,10 @@ export function mountProductionUi(
           '#ds-copilot-input',
         );
 
-      if (
-        composer !==
-        null
-      ) {
-        composer.value =
-          composerDraft;
-
-        composer.scrollTop =
-          scrollTop;
-
-        if (
-          composerWasFocused
-        ) {
-          composer.focus({
-            preventScroll:
-              true,
-          });
-
-          const length =
-            composer.value.length;
-
-          const safeStart =
-            Math.min(
-              selectionStart,
-              length,
-            );
-
-          const safeEnd =
-            Math.min(
-              selectionEnd,
-              length,
-            );
-
-          try {
-            composer.setSelectionRange(
-              safeStart,
-              safeEnd,
-            );
-          } catch {
-            // Some non-browser test DOM implementations do not support
-            // selection ranges. The value/focus restoration still applies.
-          }
-        }
-      }
+      composer?.focus({
+        preventScroll:
+          true,
+      });
     };
 
   render();

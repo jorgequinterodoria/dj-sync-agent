@@ -1,0 +1,61 @@
+appId: com.djsync.agent
+
+productName: DJ Sync Agent
+
+artifactName: DJ-Sync-Agent-${version}-${os}-${arch}.${ext}
+
+directories:
+  output: release
+
+files:
+  - dist/**/*
+  - package.json
+
+asar: true
+
+asarUnpack:
+  - "**/*.node"
+  - "**/node_modules/@journeyapps/sqlcipher/**"
+
+removePackageScripts: true
+
+npmRebuild: true
+
+buildDependenciesFromSource: false
+
+mac:
+  target:
+    - dmg
+    - zip
+
+  category: public.app-category.music
+
+  hardenedRuntime: true
+
+  entitlements: build/entitlements.mac.plist
+
+  entitlementsInherit: build/entitlements.mac.inherit.plist
+
+  gatekeeperAssess: false
+
+dmg:
+  writeUpdateInfo: false
+
+linux:
+  target:
+    - AppImage
+
+  category: AudioVideo
+
+win:
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+
+  allowToChangeInstallationDirectory: true
+
+  perMachine: false
+
+publish: null

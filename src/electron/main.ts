@@ -37,6 +37,18 @@ import {
 } from './ipc/register.js';
 
 import {
+  registerCopilotUiIpc,
+} from './ipc/copilot-ui-ipc.js';
+
+import {
+  createDJSyncCopilotUiService,
+} from '../runtime/dj-sync-copilot-ui.js';
+
+import {
+  createDJSyncCopilotActionController,
+} from '../runtime/dj-sync-copilot-action-controller.js';
+
+import {
   IPC_CHANNELS,
 } from './ipc/channels.js';
 
@@ -59,6 +71,20 @@ const library =
   createRekordboxLibraryService(
     config,
   );
+
+const copilotUi =
+  createDJSyncCopilotUiService();
+
+const copilotActions =
+  createDJSyncCopilotActionController({
+    executor: {
+      async execute() {
+        throw new Error(
+          'Real DJ action execution is deferred to Phase 32.',
+        );
+      },
+    },
+  });
 
 let runtime:
   | DJSyncRuntime
@@ -262,6 +288,11 @@ app.whenReady().then(
       applicationState,
       library,
       getAppInfo,
+    });
+
+    registerCopilotUiIpc({
+      chat: copilotUi,
+      actions: copilotActions,
     });
 
     createMainWindow();

@@ -4,6 +4,7 @@
   "private": true,
   "description": "Local sync agent for DJ Copilot / Rekordbox.",
   "type": "module",
+  "main": "dist/electron/main.js",
   "engines": {
     "node": ">=24 <25"
   },
@@ -28,7 +29,11 @@
     "validate:envelope": "tsx src/validate-envelope.ts",
     "electron": "pnpm electron:build && electron dist/electron/main.js",
     "electron:build": "pnpm build && pnpm exec tsx scripts/copy-electron-assets.ts",
-    "test": "node --import tsx --test $(find src -type f -name '*.test.ts' -print)",
+    "electron:package": "pnpm electron:build && electron-builder --config electron-builder.yml --publish never",
+    "electron:package:mac": "pnpm electron:build && electron-builder --config electron-builder.yml --mac --publish never",
+    "electron:package:dir": "pnpm electron:build && electron-builder --config electron-builder.yml --dir",
+    "electron:release-check": "pnpm typecheck && pnpm test && pnpm build && pnpm electron:build && pnpm exec tsx scripts/verify-release-artifacts.ts && git diff --check",
+    "test": "node --import tsx --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js"
@@ -42,6 +47,7 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "electron": "^44.0.0",
+    "electron-builder": "26.15.3",
     "supabase": "2.115.0",
     "tsx": "^4.0.0",
     "typescript": "^5.9.3"

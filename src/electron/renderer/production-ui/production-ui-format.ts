@@ -9,18 +9,7 @@ export function formatBpm(
     return '—';
   }
 
-  /*
-   * Keep the BPM human-readable without introducing
-   * unnecessary trailing zeroes.
-   *
-   * Examples:
-   *   128    -> "128"
-   *   127.5  -> "127.5"
-   *   127.25 -> "127.25"
-   */
-  return Number(
-    bpm.toFixed(2),
-  ).toString();
+  return Number(bpm.toFixed(2)).toString();
 }
 
 export function formatKey(

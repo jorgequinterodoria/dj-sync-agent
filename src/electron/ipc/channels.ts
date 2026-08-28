@@ -35,6 +35,18 @@ export const IPC_CHANNELS = {
   audioAnalyzeAndPersist:
     'audio:analyze-and-persist',
 
+  copilotStatus:
+    'copilot:status',
+
+  copilotChatSend:
+    'copilot:chat-send',
+
+  copilotActionApprove:
+    'copilot:action-approve',
+
+  copilotActionReject:
+    'copilot:action-reject',
+
   intelligenceGet:
     'intelligence:get',
 

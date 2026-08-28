@@ -42,6 +42,18 @@ const IPC_CHANNELS = {
   audioAnalyzeAndPersist:
     'audio:analyze-and-persist',
 
+  copilotStatus:
+    'copilot:status',
+
+  copilotChatSend:
+    'copilot:chat-send',
+
+  copilotActionApprove:
+    'copilot:action-approve',
+
+  copilotActionReject:
+    'copilot:action-reject',
+
   intelligenceGet:
     'intelligence:get',
 
@@ -154,6 +166,36 @@ contextBridge.exposeInMainWorld(
             IPC_CHANNELS.libraryGet,
             trackId,
           ),
+    },
+
+    copilot: {
+      status: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.copilotStatus,
+        ),
+
+      chat: (input: {
+        conversationId: string;
+        message: string;
+      }) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.copilotChatSend,
+          input,
+        ),
+    },
+
+    copilotAction: {
+      approve: (actionId: string) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.copilotActionApprove,
+          actionId,
+        ),
+
+      reject: (actionId: string) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.copilotActionReject,
+          actionId,
+        ),
     },
 
     audio: {

@@ -1,79 +1,118 @@
-# FASE 32 — Copilot Actions Reales + Audit Trail
+# FASE 32 — Release Candidate / Packaging
 
 ## Objetivo
 
-Conectar el Approval Gate con acciones concretas del dominio DJ y añadir un audit trail persistente y no sensible.
+Convertir el build actual de Electron en artefactos de distribución reproducibles, sin introducir todavía la publicación final de Fase 33.
 
-## Acciones soportadas
+## Baseline
 
-- `playlist.add`
-- `playlist.remove`
-- `playlist.create`
-- `cue.create`
-- `cue.remove`
+La aplicación compila actualmente a `dist`, y el entrypoint de Electron se encuentra bajo `dist/electron`. El proyecto existente usa Electron como dependencia de desarrollo y `electron:build` como paso de compilación de Electron. fileciteturn120file0L38-L43
 
-Las operaciones reciben primero una acción validada por `validateDJAction`.
+## Packaging
 
-## Flujo
+Esta fase usa `electron-builder`.
 
-```text
-AI Action
-  ↓
-Validate
-  ↓
-Action Preview
-  ↓
-Approval Gate
-  ↓
-Consume approval
-  ↓
-Real Action Executor
-  ↓
-Core Domain
-  ↓
-Audit
+Targets configurados:
+
+- macOS: DMG + ZIP;
+- Linux: AppImage;
+- Windows: NSIS.
+
+La configuración mantiene `asar` activado y desempaqueta los módulos nativos `.node` y `@journeyapps/sqlcipher`.
+
+## macOS
+
+Se configura Hardened Runtime y entitlements mínimos para Electron/V8.
+
+La firma y notarización definitiva dependen de las credenciales Apple del entorno de release. No se almacenan certificados, passwords, API keys ni perfiles dentro del repositorio.
+
+La documentación oficial de Electron indica que una aplicación distribuida fuera de la Mac App Store debe estar firmada y notarizada para evitar los bloqueos de seguridad de macOS; electron-builder soporta esta configuración mediante `mac.notarize` y las variables de autenticación correspondientes. citeturn470852search2turn470852search0
+
+## Scripts
+
+```bash
+pnpm electron:package
+pnpm electron:package:mac
+pnpm electron:package:dir
+pnpm electron:release-check
 ```
 
-## Seguridad
-
-- Ninguna acción sensible ejecuta directamente desde el renderer.
-- La aprobación continúa siendo obligatoria.
-- El executor solo acepta `ValidatedDJAction`.
-- No se almacenan tokens, API keys ni service-role secrets.
-- La tabla de auditoría tiene RLS habilitado.
-- El audit record contiene metadata de ejecución, no credenciales.
-
-## Supabase
-
-Esta fase introduce:
+`electron:release-check` ejecuta:
 
 ```text
-supabase/migrations/20260827000010_copilot_action_audit.sql
-supabase/functions/copilot-action-audit/index.ts
+typecheck
+tests
+TypeScript build
+Electron asset build
+artifact verification
+git diff --check
 ```
 
-No ejecutar `db push` hasta completar:
+## No publicar
+
+Fase 32 no ejecuta publicación automática.
+
+`electron-builder` usa `--publish never` en los scripts normales. La publicación final pertenece a Fase 33.
+
+## Instalación
+
+Primero sincroniza dependencias:
+
+```bash
+pnpm install
+```
+
+El paquete `electron-builder` debe quedar instalado como `devDependency`.
+
+## Validación local
 
 ```bash
 pnpm typecheck
 pnpm test
 pnpm build
 pnpm electron:build
+pnpm electron:package:mac
+```
+
+Después:
+
+```bash
+pnpm exec tsx scripts/verify-release-artifacts.ts
 git diff --check
 ```
 
-Una vez verificado localmente, se puede aplicar:
+El resultado esperado en macOS es tener artefactos `.dmg` y `.zip` dentro de `release/`.
 
-```bash
-pnpm supabase db push
+## Seguridad
+
+Nunca introducir:
+
+```text
+APPLE_ID
+APPLE_APP_SPECIFIC_PASSWORD
+APPLE_API_KEY
+APPLE_API_KEY_ID
+APPLE_API_ISSUER
+certificados
+private keys
+service-role keys
+API keys
 ```
 
-y después:
+en `package.json`, `electron-builder.yml`, entitlements ni scripts del repositorio.
 
-```bash
-pnpm supabase functions deploy copilot-action-audit --no-verify-jwt
-```
+electron-builder recomienda obtener las credenciales de notarización desde variables de entorno; para CI recomienda App Store Connect API keys. citeturn470852search7turn470852search0
 
-## Nota
+## Límite de fase
 
-La integración con los repositorios reales de Playlist/Cue debe conectarse en el composition root existente. Esta entrega no reemplaza el bootstrap actual de Electron.
+Esta fase prepara y verifica el Release Candidate.
+
+No incluye:
+
+- publicación automática;
+- actualización OTA;
+- auto-updater;
+- distribución pública;
+- credenciales Apple permanentes.
+
+Esos puntos quedan para Fase 33.

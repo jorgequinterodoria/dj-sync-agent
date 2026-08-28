@@ -126,6 +126,22 @@ export interface AudioAnalysisApplicationSnapshot {
   error: string | null;
 }
 
+export interface CopilotUiStatus {
+  readonly configured: boolean;
+  readonly provider: 'openai' | 'anthropic' | 'openai-compatible' | null;
+  readonly model: string | null;
+  readonly lastRequestAt: string | null;
+  readonly lastResponseAt: string | null;
+  readonly lastError: string | null;
+}
+
+export interface CopilotActionUiResult {
+  readonly ok: boolean;
+  readonly approvalId: string | null;
+  readonly status: string | null;
+  readonly error: string | null;
+}
+
 export interface DJSyncRendererApi {
   app: {
     getInfo(): Promise<AppInfo>;
@@ -144,6 +160,22 @@ export interface DJSyncRendererApi {
     list(options?: LibraryListOptions): Promise<LibraryPage>;
     get(trackId: string): Promise<NormalizedTrack>;
   };
+  copilot: {
+    status(): Promise<CopilotUiStatus>;
+    chat(input: {
+      readonly conversationId: string;
+      readonly message: string;
+    }): Promise<
+      | { readonly ok: true; readonly result: unknown }
+      | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } }
+    >;
+  };
+
+  copilotAction: {
+    approve(actionId: string): Promise<CopilotActionUiResult>;
+    reject(actionId: string): Promise<CopilotActionUiResult>;
+  };
+
   audio: {
     status(trackId: string): Promise<AudioAnalysisApplicationSnapshot>;
     analyze(trackId: string): Promise<AudioAnalysisApplicationSnapshot>;

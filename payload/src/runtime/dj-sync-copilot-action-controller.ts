@@ -87,30 +87,6 @@ function statusFromApproval(
   }
 }
 
-function requireApprovalDecision(
-  approval: ApprovalDecision | undefined,
-  operation: string,
-): ApprovalDecision {
-  if (!approval) {
-    throw new Error(
-      `Unable to ${operation}: approval is no longer available.`,
-    );
-  }
-
-  return approval;
-}
-
-function withoutError(
-  state: CopilotActionControllerState,
-): CopilotActionControllerState {
-  const {
-    error: _error,
-    ...rest
-  } = state;
-
-  return rest;
-}
-
 export function createDJSyncCopilotActionController(
   options: CopilotActionControllerOptions,
 ): DJSyncCopilotActionController {
@@ -172,16 +148,19 @@ export function createDJSyncCopilotActionController(
       }
 
       const approval =
-        requireApprovalDecision(
-          gate.approve(approvalId),
-          'approve the action',
+        gate.approve(
+          approvalId,
         );
 
-      current = withoutError({
+      current = {
         ...current,
         approval,
-        status: statusFromApproval(approval),
-      });
+        status:
+          statusFromApproval(
+            approval,
+          ),
+        error: undefined,
+      };
 
       return current;
     },
@@ -210,16 +189,19 @@ export function createDJSyncCopilotActionController(
       }
 
       const approval =
-        requireApprovalDecision(
-          gate.reject(approvalId),
-          'reject the action',
+        gate.reject(
+          approvalId,
         );
 
-      current = withoutError({
+      current = {
         ...current,
         approval,
-        status: statusFromApproval(approval),
-      });
+        status:
+          statusFromApproval(
+            approval,
+          ),
+        error: undefined,
+      };
 
       return current;
     },
@@ -241,16 +223,16 @@ export function createDJSyncCopilotActionController(
         return current;
       }
 
-      const approval = requireApprovalDecision(
-        gate.approve(current.approval.approvalId),
-        'approve the action',
+      const approval = gate.approve(
+        current.approval.approvalId,
       );
 
-      current = withoutError({
+      current = {
         ...current,
         approval,
         status: statusFromApproval(approval),
-      });
+        error: undefined,
+      };
 
       return current;
     },
@@ -272,16 +254,16 @@ export function createDJSyncCopilotActionController(
         return current;
       }
 
-      const approval = requireApprovalDecision(
-        gate.reject(current.approval.approvalId),
-        'reject the action',
+      const approval = gate.reject(
+        current.approval.approvalId,
       );
 
-      current = withoutError({
+      current = {
         ...current,
         approval,
         status: statusFromApproval(approval),
-      });
+        error: undefined,
+      };
 
       return current;
     },
@@ -336,6 +318,7 @@ export function createDJSyncCopilotActionController(
           ...action,
           status: 'executed',
           result,
+          error: undefined,
         };
 
         return current;
