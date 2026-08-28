@@ -61,6 +61,8 @@ export interface DJSyncCopilotActionController {
     actionId: string,
   ): CopilotActionControllerState;
 
+  getCurrentState(): CopilotActionControllerState | undefined;
+
   execute(
     input: {
       readonly deviceId: string;
@@ -283,6 +285,10 @@ export function createDJSyncCopilotActionController(
         status: statusFromApproval(approval),
       });
 
+      return current;
+    },
+
+    getCurrentState() {
       return current;
     },
 

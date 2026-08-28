@@ -869,3 +869,34 @@
     transition: none;
   }
 }
+
+[data-ds-view-mode="dashboard-only"]
+  [data-ds-region="copilot"] {
+  display: none !important;
+}
+
+[data-ds-view-mode="copilot-only"]
+  [data-ds-region="topbar"],
+[data-ds-view-mode="copilot-only"]
+  [data-ds-region="heading"],
+[data-ds-view-mode="copilot-only"]
+  [data-ds-region="secondary"] {
+  display: none !important;
+}
+
+[data-ds-view-mode="copilot-only"]
+  .ds-primary-column {
+  width: 100%;
+  max-width: 100%;
+}
+
+[data-ds-view-mode="copilot-only"]
+  .ds-primary-column
+  > :not([data-ds-region="copilot"]) {
+  display: none !important;
+}
+
+[data-ds-view-mode="copilot-only"]
+  .ds-main {
+  padding-top: 8px;
+}

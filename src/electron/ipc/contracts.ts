@@ -7,7 +7,17 @@ import type {
   DJSyncIntelligenceSnapshot,
   IntelligenceJob,
 } from '../../runtime/dj-sync-intelligence.js';
+import type {
+  CopilotActionUiStatus,
+} from '../../runtime/dj-sync-copilot-action-controller.js';
 import type { DJSyncApplicationSnapshot as RuntimeApplicationSnapshot } from '../../runtime/dj-sync-application-state.js';
+import type {
+  UserSettings,
+} from '../../config/user-settings.store.js';
+
+export type {
+  UserSettings,
+};
 
 export interface AppInfo {
   name: string;
@@ -142,6 +152,17 @@ export interface CopilotActionUiResult {
   readonly error: string | null;
 }
 
+export interface CopilotPendingActionView {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly risk: 'write' | 'review';
+  readonly affectedResources: readonly string[];
+  readonly reversible: boolean;
+  readonly status: CopilotActionUiStatus | null;
+  readonly approvalId: string | null;
+}
+
 export interface DJSyncRendererApi {
   app: {
     getInfo(): Promise<AppInfo>;
@@ -174,6 +195,7 @@ export interface DJSyncRendererApi {
   copilotAction: {
     approve(actionId: string): Promise<CopilotActionUiResult>;
     reject(actionId: string): Promise<CopilotActionUiResult>;
+    getCurrent(): Promise<CopilotPendingActionView | null>;
   };
 
   audio: {
@@ -186,6 +208,11 @@ export interface DJSyncRendererApi {
     refresh(trackId: string): Promise<IntelligenceJob>;
     preferenceUpdate(trackId: string): Promise<IntelligenceJob>;
     retire(trackId: string): Promise<IntelligenceJob>;
+  };
+
+  settings: {
+    get(): Promise<UserSettings>;
+    save(input: UserSettings): Promise<UserSettings>;
   };
 }
 

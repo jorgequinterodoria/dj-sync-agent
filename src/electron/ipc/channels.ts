@@ -47,6 +47,9 @@ export const IPC_CHANNELS = {
   copilotActionReject:
     'copilot:action-reject',
 
+  copilotActionGetCurrent:
+    'copilot:action-get-current',
+
   intelligenceGet:
     'intelligence:get',
 
@@ -58,6 +61,12 @@ export const IPC_CHANNELS = {
 
   intelligenceRetire:
     'intelligence:retire',
+
+  settingsGet:
+    'settings:get',
+
+  settingsSave:
+    'settings:save',
 } as const;
 
 export type IpcChannel =

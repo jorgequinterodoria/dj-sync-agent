@@ -25,42 +25,77 @@ if (
   nav !== null &&
   dashboard !== null
 ) {
-  const audioNav =
-    document.createElement(
+  let audioNav:
+    HTMLButtonElement =
+    (
+      document.querySelector(
+        '#nav-audio',
+      ) as HTMLButtonElement | null
+    ) ??
+    (document.createElement(
       'button',
+    ) as HTMLButtonElement);
+
+  if (
+    audioNav.id ===
+    ''
+  ) {
+    audioNav.id =
+      'nav-audio';
+
+    audioNav.type =
+      'button';
+
+    audioNav.className =
+      'nav-button';
+
+    audioNav.textContent =
+      'Audio';
+
+    audioNav.dataset.view =
+      'audio';
+
+    nav.append(
+      audioNav,
     );
+  }
 
-  audioNav.id =
-    'nav-audio';
-
-  audioNav.type =
-    'button';
-
-  audioNav.className =
-    'nav-button';
-
-  audioNav.textContent =
-    'Audio';
-
-  audioNav.dataset.view =
-    'audio';
-
-  nav.append(
-    audioNav,
-  );
-
-  const audioView =
-    document.createElement(
+  let audioView:
+    HTMLElement =
+    (
+      document.querySelector(
+        '#view-audio',
+      ) as HTMLElement | null
+    ) ??
+    (document.createElement(
       'section',
+    ) as HTMLElement);
+
+  const existingAudioManaged =
+    audioView.getAttribute(
+      'data-managed-by',
     );
 
-  audioView.id =
-    'view-audio';
+  const audioNeedsHydration =
+    audioView.id ===
+      '' ||
+    existingAudioManaged ===
+      'audio-controller' ||
+    audioView.querySelector(
+      '#audio-content',
+    ) ===
+      null;
 
-  audioView.className =
-    'view-section view-hidden';
+  if (
+    audioNeedsHydration
+  ) {
+    audioView.id =
+      'view-audio';
 
-  audioView.innerHTML =
+    audioView.className =
+      'view-section view-hidden';
+
+    audioView.innerHTML =
     `
       <section class="audio-header">
         <div>
@@ -337,6 +372,7 @@ if (
         </article>
       </section>
     `;
+  }
 
   dashboard.append(
     audioView,
@@ -623,6 +659,38 @@ if (
       | 'library'
       | 'audio',
   ): void {
+    const newTabOrder =
+      document.querySelector(
+        '#nav-settings',
+      ) !==
+      null;
+
+    if (
+      newTabOrder &&
+      typeof window !==
+        'undefined'
+    ) {
+      const evt =
+        new CustomEvent<
+          RendererLegacyView
+        >(
+          'dj-sync:set-view',
+          {
+            detail:
+              view,
+            bubbles:
+              true,
+          },
+        );
+
+      document
+        .dispatchEvent(
+          evt,
+        );
+
+      return;
+    }
+
     dashboardView?.classList.toggle(
       'view-hidden',
       view !==
@@ -659,6 +727,11 @@ if (
         'audio',
     );
   }
+
+  type RendererLegacyView =
+    | 'dashboard'
+    | 'library'
+    | 'audio';
 
   function setBusy(
     busy:

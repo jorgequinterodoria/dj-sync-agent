@@ -39,7 +39,7 @@ mac:
   gatekeeperAssess: false
 
 dmg:
-  writeUpdateInfo: false
+  writeUpdateInfo: true
 
 linux:
   target:
@@ -58,4 +58,9 @@ nsis:
 
   perMachine: false
 
-publish: null
+publish:
+  - provider: github
+    owner:    ${env.GITHUB_REPO_OWNER}
+    repo:     ${env.GITHUB_REPO_NAME}
+    vPrefixedTagName: true
+    releaseType: release

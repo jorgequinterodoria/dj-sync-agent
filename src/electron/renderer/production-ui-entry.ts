@@ -6,12 +6,16 @@ import {
 import type {
   DJSyncApplicationSnapshot,
   CopilotActionUiResult,
+  CopilotPendingActionView,
+  UserSettings,
 } from '../ipc/contracts.js';
 
 import type {
   ProductionActivityItem,
   ProductionCopilotMessage,
   ProductionCopilotState,
+  ProductionActionPreview,
+  ProductionTrack,
   ProductionUiSnapshot,
   ProductionSyncState,
 } from './production-ui/production-ui-types.js';
@@ -43,15 +47,153 @@ let applicationSubscription:
 
 let activityCounter = 0;
 let lastReportedRunKey = '';
+let viewModeObserver:
+  MutationObserver |
+  null =
+  null;
 
 type RendererView =
   | 'dashboard'
   | 'library'
   | 'audio'
+  | 'settings'
   | 'copilot';
 
-let activeView: RendererView =
+let activeView:
+  RendererView =
   'dashboard';
+
+function resolveDsViewMode(
+  view:
+    RendererView,
+):
+  | 'dashboard-only'
+  | 'copilot-only'
+  | null {
+  switch (
+    view
+  ) {
+    case 'dashboard':
+      return 'dashboard-only';
+    case 'copilot':
+      return 'copilot-only';
+    default:
+      return null;
+  }
+}
+
+function applyDsViewMode(
+  view:
+    RendererView,
+):
+  void {
+  const shell =
+    root.querySelector<
+      HTMLElement
+    >(
+      '.ds-shell',
+    );
+
+  if (
+    shell ===
+    null
+  ) {
+    return;
+  }
+
+  const mode =
+    resolveDsViewMode(
+      view,
+    );
+
+  if (
+    mode ===
+    null
+  ) {
+    shell.removeAttribute(
+      'data-ds-view-mode',
+    );
+  } else {
+    shell.setAttribute(
+      'data-ds-view-mode',
+      mode,
+    );
+  }
+}
+
+function ensureViewModeObserver():
+  void {
+  if (
+    viewModeObserver !==
+    null
+  ) {
+    return;
+  }
+
+  viewModeObserver =
+    new MutationObserver(
+      () => {
+        applyDsViewMode(
+          activeView,
+        );
+      },
+    );
+
+  viewModeObserver.observe(
+    root,
+    {
+      childList:
+        true,
+      subtree:
+        true,
+    },
+  );
+}
+
+let settingsPanel:
+  | HTMLElement
+  | null =
+  null;
+
+let settingsOpen =
+  false;
+
+const DRAFT_SETTINGS_DEFAULTS:
+  Required<
+    UserSettings
+  > = {
+    syncAgentId:
+      '',
+    syncApiUrl:
+      '',
+    syncApiKey:
+      '',
+    rekordboxDbPath:
+      '',
+    rekordboxDbKey:
+      '',
+    rekordboxCipherCompatibility:
+      4,
+    copilotProvider:
+      'openai',
+    copilotApiKey:
+      '',
+    copilotBaseUrl:
+      '',
+    copilotModel:
+      '',
+    intelligenceJobsApiUrl:
+      '',
+    logLevel:
+      'info',
+  };
+
+let draftSettings:
+  Required<
+    UserSettings
+  > = {
+    ...DRAFT_SETTINGS_DEFAULTS,
+  };
 
 function now(): string {
   return new Date().toISOString();
@@ -90,6 +232,56 @@ function withMessage(
   };
 }
 
+function toProductionTrack(
+  track: {
+    readonly identity: { readonly id: string };
+    readonly metadata: {
+      readonly title: string | null;
+      readonly artist: string | null;
+      readonly album: string | null;
+      readonly key: string | null;
+    };
+    readonly technical: {
+      readonly bpm: number | null;
+    };
+  },
+): ProductionTrack {
+  return {
+    id: track.identity.id,
+    title: track.metadata.title ?? 'Untitled',
+    artist: track.metadata.artist ?? 'Unknown',
+    album: track.metadata.album ?? null,
+    bpm: track.technical.bpm ?? null,
+    key: track.metadata.key ?? null,
+    artworkUrl: null,
+  };
+}
+
+function toProductionActionPreview(
+  pending: CopilotPendingActionView,
+): ProductionActionPreview | null {
+  if (
+    pending.status !==
+      'pending'
+  ) {
+    return null;
+  }
+
+  return {
+    id: pending.id,
+    title: pending.title,
+    description:
+      pending.description,
+    risk: pending.risk,
+    affectedResources: [
+      ...pending.affectedResources,
+    ],
+    reversible:
+      pending.reversible,
+    status: pending.status,
+  };
+}
+
 function navButtons(): HTMLButtonElement[] {
   return Array.from(
     document.querySelectorAll<HTMLButtonElement>(
@@ -106,6 +298,11 @@ function syncNavigation(
       const active =
         button.dataset.view ===
         view;
+
+      button.classList.toggle(
+        'nav-active',
+        active,
+      );
 
       button.classList.toggle(
         'active',
@@ -171,54 +368,138 @@ function setView(
       '#view-audio',
     );
 
+  const settingsView =
+    document.querySelector<HTMLElement>(
+      '#view-settings',
+    );
+
+  const allViews: HTMLElement[] =
+    [
+      dashboardView,
+      libraryView,
+      audioView,
+      settingsView,
+    ].filter(
+      (el): el is HTMLElement =>
+        el !== null,
+    );
+
+  function hide(
+    el: HTMLElement,
+  ): void {
+    el.classList.add(
+      'view-hidden',
+    );
+  }
+
+  function show(
+    el: HTMLElement,
+  ): void {
+    el.classList.remove(
+      'view-hidden',
+    );
+  }
+
+  allViews.forEach(
+    hide,
+  );
+
   if (
     view === 'dashboard' ||
     view === 'copilot'
   ) {
-    dashboardView?.classList.remove(
-      'view-hidden',
+    if (
+      dashboardView !==
+      null
+    ) {
+      show(
+        dashboardView,
+      );
+    }
+
+    showProductionWorkspace(
+      true,
     );
 
-    libraryView?.classList.add(
-      'view-hidden',
-    );
+    if (
+      view ===
+      'dashboard'
+    ) {
+      dashboardView?.scrollTo(
+        {
+          top:
+            0,
+          left:
+            0,
+          behavior:
+            'auto',
+        },
+      );
 
-    audioView?.classList.add(
-      'view-hidden',
-    );
+      window.scrollTo(
+        {
+          top:
+            0,
+          left:
+            0,
+          behavior:
+            'auto',
+        },
+      );
+    }
+  } else if (
+    view ===
+    'library'
+  ) {
+    if (
+      libraryView !==
+      null
+    ) {
+      show(
+        libraryView,
+      );
+    }
 
-    showProductionWorkspace(true);
-  } else if (view === 'library') {
-    dashboardView?.classList.add(
-      'view-hidden',
+    showProductionWorkspace(
+      false,
     );
+  } else if (
+    view ===
+    'audio'
+  ) {
+    if (
+      audioView !==
+      null
+    ) {
+      show(
+        audioView,
+      );
+    }
 
-    libraryView?.classList.remove(
-      'view-hidden',
+    showProductionWorkspace(
+      false,
     );
+  } else if (
+    view ===
+    'settings'
+  ) {
+    if (
+      settingsView !==
+      null
+    ) {
+      show(
+        settingsView,
+      );
+    }
 
-    audioView?.classList.add(
-      'view-hidden',
+    showProductionWorkspace(
+      false,
     );
-
-    showProductionWorkspace(false);
-  } else {
-    dashboardView?.classList.add(
-      'view-hidden',
-    );
-
-    libraryView?.classList.add(
-      'view-hidden',
-    );
-
-    audioView?.classList.remove(
-      'view-hidden',
-    );
-
-    showProductionWorkspace(false);
   }
 
-  syncNavigation(view);
+  syncNavigation(
+    view,
+  );
 
   if (
     options.scrollToCopilot &&
@@ -284,6 +565,9 @@ function installCopilotNavigation(): void {
   navigationButton.dataset.view =
     'copilot';
   navigationButton.classList.remove(
+    'nav-active',
+  );
+  navigationButton.classList.remove(
     'active',
   );
   navigationButton.removeAttribute(
@@ -301,8 +585,47 @@ function installCopilotNavigation(): void {
   syncNavigation();
 }
 
+let legacySetViewListenerInstalled =
+  false;
+
+function ensureLegacySetViewListener():
+  void {
+  if (
+    legacySetViewListenerInstalled
+  ) {
+    return;
+  }
+
+  legacySetViewListenerInstalled =
+    true;
+
+  document.addEventListener(
+    'dj-sync:set-view',
+    (
+      event: Event,
+    ) => {
+      const custom =
+        event as CustomEvent<
+          'dashboard' | 'library' | 'audio' | 'copilot' | 'settings'
+        >;
+
+      if (
+        typeof custom
+          ?.detail ===
+          'string'
+      ) {
+        setView(
+          custom
+            .detail,
+        );
+      }
+    },
+  );
+}
+
 function installNavigationController(): void {
   installCopilotNavigation();
+  ensureLegacySetViewListener();
 
   document.addEventListener(
     'click',
@@ -332,7 +655,8 @@ function installNavigationController(): void {
         view !== 'dashboard' &&
         view !== 'library' &&
         view !== 'audio' &&
-        view !== 'copilot'
+        view !== 'copilot' &&
+        view !== 'settings'
       ) {
         return;
       }
@@ -520,6 +844,8 @@ function applyApplicationSnapshot(
     activities:
       activities.slice(-100),
     error: null,
+    track: snapshot.track,
+    pendingAction: snapshot.pendingAction,
   });
 }
 
@@ -588,6 +914,32 @@ function addSystemMessage(
   });
 }
 
+async function refreshPendingAction(): Promise<void> {
+  try {
+    const pending =
+      await window.djSync.copilotAction.getCurrent();
+
+    const action =
+      pending === null
+        ? null
+        : toProductionActionPreview(
+            pending,
+          );
+
+    apply({
+      ...snapshot,
+      pendingAction: action,
+    });
+  } catch (error: unknown) {
+    apply({
+      ...snapshot,
+      pendingAction: null,
+      error:
+        errorMessage(error),
+    });
+  }
+}
+
 async function refresh(): Promise<void> {
   try {
     const application =
@@ -605,6 +957,8 @@ async function refresh(): Promise<void> {
         errorMessage(error),
     });
   }
+
+  void refreshPendingAction();
 }
 
 async function sendMessage(
@@ -812,6 +1166,8 @@ async function approveAction(
         }),
       ].slice(-100),
     });
+
+    void refreshPendingAction();
   } catch (error: unknown) {
     apply({
       ...snapshot,
@@ -864,6 +1220,8 @@ async function rejectAction(
         }),
       ].slice(-100),
     });
+
+    void refreshPendingAction();
   } catch (error: unknown) {
     apply({
       ...snapshot,
@@ -883,6 +1241,830 @@ async function rejectAction(
         }),
       ].slice(-100),
     });
+  }
+}
+
+function buildSettingsFloatingButton():
+  void {
+  let button =
+    document.querySelector<
+      HTMLButtonElement
+    >(
+      '#production-ui-settings-trigger',
+    );
+
+  if (button) {
+    return;
+  }
+
+  button =
+    document.createElement(
+      'button',
+    );
+
+  button.type =
+    'button';
+
+  button.id =
+    'production-ui-settings-trigger';
+
+  button.setAttribute(
+    'aria-label',
+    'Open settings',
+  );
+
+  button.title =
+    'Settings';
+
+  Object.assign(
+    button.style,
+    {
+      position:
+        'fixed',
+      top:
+        '20px',
+      right:
+        '20px',
+      width:
+        '44px',
+      height:
+        '44px',
+      borderRadius:
+        '9999px',
+      border:
+        '1px solid #e5e7eb',
+      background:
+        '#ffffff',
+      color:
+        '#111827',
+      fontSize:
+        '20px',
+      lineHeight:
+        '42px',
+      textAlign:
+        'center',
+      boxShadow:
+        '0 4px 14px rgba(0,0,0,0.08)',
+      cursor:
+        'pointer',
+      zIndex:
+        '2147483000',
+    } as CSSStyleDeclaration,
+  );
+
+  button.textContent =
+    '⚙️';
+
+  button.addEventListener(
+    'click',
+    () => {
+      openSettingsPanel();
+    },
+  );
+
+  document
+    .body
+    .appendChild(
+      button,
+    );
+}
+
+function closeSettingsPanel():
+  void {
+  settingsOpen =
+    false;
+
+  if (
+    settingsPanel !==
+    null
+  ) {
+    settingsPanel
+      .remove();
+    settingsPanel =
+      null;
+  }
+}
+
+function syncDraftFromInputs():
+  void {
+  if (
+    settingsPanel ===
+    null
+  ) {
+    return;
+  }
+
+  const read = (
+    id: string,
+  ): string =>
+    (
+      settingsPanel!.querySelector<
+        HTMLInputElement | HTMLSelectElement
+      >(
+        `#${id}`,
+      )
+    )?.value?.trim() ??
+    '';
+
+  const readNumber = (
+    id: string,
+  ): number => {
+    const raw =
+      read(id);
+
+    const parsed =
+      Number(
+        raw,
+      );
+
+    if (
+      Number
+        .isFinite(
+          parsed,
+        )
+    ) {
+      return parsed;
+    }
+
+    return draftSettings[
+      id as keyof typeof draftSettings
+    ] as number;
+  };
+
+  draftSettings =
+    {
+      syncAgentId:
+        read(
+          'setting-sync-agent-id',
+        ),
+      syncApiUrl:
+        read(
+          'setting-sync-api-url',
+        ),
+      syncApiKey:
+        read(
+          'setting-sync-api-key',
+        ),
+      rekordboxDbPath:
+        read(
+          'setting-rekordbox-db-path',
+        ),
+      rekordboxDbKey:
+        read(
+          'setting-rekordbox-db-key',
+        ),
+      rekordboxCipherCompatibility:
+        (readNumber(
+          'setting-rekordbox-cipher',
+        ) as 1 | 2 | 3 | 4),
+      copilotProvider:
+        (read(
+          'setting-copilot-provider',
+        ) as
+          | 'openai'
+          | 'anthropic'
+          | 'openai-compatible'),
+      copilotApiKey:
+        read(
+          'setting-copilot-api-key',
+        ),
+      copilotBaseUrl:
+        read(
+          'setting-copilot-base-url',
+        ),
+      copilotModel:
+        read(
+          'setting-copilot-model',
+        ),
+      intelligenceJobsApiUrl:
+        read(
+          'setting-intelligence-api-url',
+        ),
+      logLevel:
+        (read(
+          'setting-log-level',
+        ) as UserSettings['logLevel']) ??
+        'info',
+    };
+}
+
+function renderDraftIntoInputs():
+  void {
+  if (
+    settingsPanel ===
+    null
+  ) {
+    return;
+  }
+
+  const set = (
+    id: string,
+    value:
+      | string
+      | number,
+  ): void => {
+    const input =
+      settingsPanel!.querySelector<
+        HTMLInputElement | HTMLSelectElement
+      >(
+        `#${id}`,
+      );
+
+    if (
+      input ===
+      null
+    ) {
+      return;
+    }
+
+    input.value =
+      String(
+        value,
+      );
+  };
+
+  set(
+    'setting-sync-agent-id',
+    draftSettings
+      .syncAgentId ??
+      '',
+  );
+
+  set(
+    'setting-sync-api-url',
+    draftSettings
+      .syncApiUrl ??
+      '',
+  );
+
+  set(
+    'setting-sync-api-key',
+    draftSettings
+      .syncApiKey ??
+      '',
+  );
+
+  set(
+    'setting-rekordbox-db-path',
+    draftSettings
+      .rekordboxDbPath ??
+      '',
+  );
+
+  set(
+    'setting-rekordbox-db-key',
+    draftSettings
+      .rekordboxDbKey ??
+      '',
+  );
+
+  set(
+    'setting-rekordbox-cipher',
+    draftSettings
+      .rekordboxCipherCompatibility ??
+      4,
+  );
+
+  set(
+    'setting-copilot-provider',
+    draftSettings
+      .copilotProvider ??
+      'openai',
+  );
+
+  set(
+    'setting-copilot-api-key',
+    draftSettings
+      .copilotApiKey ??
+      '',
+  );
+
+  set(
+    'setting-copilot-base-url',
+    draftSettings
+      .copilotBaseUrl ??
+      '',
+  );
+
+  set(
+    'setting-copilot-model',
+    draftSettings
+      .copilotModel ??
+      '',
+  );
+
+  set(
+    'setting-intelligence-api-url',
+    draftSettings
+      .intelligenceJobsApiUrl ??
+      '',
+  );
+
+  set(
+    'setting-log-level',
+    draftSettings
+      .logLevel ??
+      'info',
+  );
+}
+
+function setSettingsSaveStatus(
+  kind:
+    | 'idle'
+    | 'saving'
+    | 'saved'
+    | 'error',
+  message?: string,
+):
+  void {
+  if (
+    settingsPanel ===
+    null
+  ) {
+    return;
+  }
+
+  const status =
+    settingsPanel.querySelector<
+      HTMLElement
+    >(
+      '#settings-save-status',
+    );
+
+  if (
+    status ===
+    null
+  ) {
+    return;
+  }
+
+  const colorMap =
+    {
+      idle:
+        '#6b7280',
+      saving:
+        '#6b7280',
+      saved:
+        '#16a34a',
+      error:
+        '#dc2626',
+    } as const;
+
+  status.style.color =
+    colorMap[kind];
+
+  switch (
+    kind
+  ) {
+    case 'idle':
+      status.textContent =
+        message ??
+        'Changes are saved locally in ~/.config/dj-sync-agent/settings.json (0600). Restart DJ Sync Agent to apply them completely.';
+      break;
+    case 'saving':
+      status.textContent =
+        message ??
+        'Saving…';
+      break;
+    case 'saved':
+      status.textContent =
+        message ??
+        '✓ Saved. Restart the app to apply all settings.';
+      break;
+    case 'error':
+      status.textContent =
+        message ??
+        'Error saving.';
+      break;
+  }
+}
+
+function buildSettingsPanel():
+  HTMLElement {
+  if (
+    settingsPanel !==
+    null
+  ) {
+    return settingsPanel;
+  }
+
+  const panel =
+    document.createElement(
+      'div',
+    );
+
+  settingsPanel =
+    panel;
+
+  Object.assign(
+    panel.style,
+    {
+      position:
+        'fixed',
+      inset:
+        '0',
+      backgroundColor:
+        'rgba(17,24,39,0.5)',
+      backdropFilter:
+        'blur(4px)',
+      display:
+        'flex',
+      alignItems:
+        'flex-start',
+      justifyContent:
+        'center',
+      paddingTop:
+        '8vh',
+      paddingBottom:
+        '8vh',
+      zIndex:
+        '2147483500',
+      overflowY:
+        'auto',
+    } as CSSStyleDeclaration,
+  );
+
+  const card =
+    document.createElement(
+      'div',
+    );
+
+  Object.assign(
+    card.style,
+    {
+      width:
+        '100%',
+      maxWidth:
+        '820px',
+      background:
+        '#ffffff',
+      borderRadius:
+        '16px',
+      padding:
+        '28px 32px 32px',
+      boxShadow:
+        '0 20px 60px rgba(0,0,0,0.25)',
+      color:
+        '#111827',
+      fontFamily:
+        'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+      fontSize:
+        '14px',
+      lineHeight:
+        '1.45',
+    } as CSSStyleDeclaration,
+  );
+
+  card.innerHTML =
+    String.raw`
+<div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px;">
+  <div>
+    <h1 style="margin:0; font-size:22px; font-weight:650; letter-spacing:-0.01em;">Settings</h1>
+    <p style="margin:6px 0 0; color:#4b5563;">
+      Configure here the DJ Sync Agent identifiers, Copilot provider and Rekordbox database location.
+      Saved locally in <code style="padding:2px 6px; background:#f3f4f6; border-radius:6px;">~/.config/dj-sync-agent/settings.json</code>
+      with file mode 0600.
+    </p>
+  </div>
+  <button id="settings-close" type="button"
+    style="border:none; background:transparent; font-size:22px; line-height:1; cursor:pointer; color:#6b7280; padding:4px 8px; border-radius:8px;"
+    title="Close">×</button>
+</div>
+
+<form id="settings-form" autocomplete="off" spellcheck="false" style="display:grid; gap:22px;">
+  <fieldset style="border:1px solid #e5e7eb; border-radius:12px; padding:18px 20px 20px;">
+    <legend style="padding:0 8px; font-weight:600; color:#111827;">Sync</legend>
+    <div style="display:grid; gap:14px; margin-top:6px;">
+      <div>
+        <label for="setting-sync-agent-id" style="display:block; font-weight:500; margin-bottom:6px;">SYNC_AGENT_ID</label>
+        <input id="setting-sync-agent-id" name="syncAgentId" type="text" placeholder="device-abc123"
+          style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+      </div>
+      <div style="display:grid; grid-template-columns: 2fr 1.2fr; gap:14px;">
+        <div>
+          <label for="setting-sync-api-url" style="display:block; font-weight:500; margin-bottom:6px;">SYNC_API_URL (optional)</label>
+          <input id="setting-sync-api-url" name="syncApiUrl" type="url" placeholder="https://..."
+            style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label for="setting-sync-api-key" style="display:block; font-weight:500; margin-bottom:6px;">SYNC_API_KEY (optional)</label>
+          <input id="setting-sync-api-key" name="syncApiKey" type="password" autocomplete="new-password" placeholder="••••••"
+            style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset style="border:1px solid #e5e7eb; border-radius:12px; padding:18px 20px 20px;">
+    <legend style="padding:0 8px; font-weight:600; color:#111827;">Rekordbox</legend>
+    <div style="display:grid; gap:14px; margin-top:6px;">
+      <div>
+        <label for="setting-rekordbox-db-path" style="display:block; font-weight:500; margin-bottom:6px;">REKORDBOX_DB_PATH</label>
+        <input id="setting-rekordbox-db-path" name="rekordboxDbPath" type="text"
+          placeholder="~/Library/Pioneer/rekordbox/master.db"
+          style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+      </div>
+      <div style="display:grid; grid-template-columns: 1.4fr 1fr; gap:14px;">
+        <div>
+          <label for="setting-rekordbox-db-key" style="display:block; font-weight:500; margin-bottom:6px;">REKORDBOX_DB_KEY (optional)</label>
+          <input id="setting-rekordbox-db-key" name="rekordboxDbKey" type="password" autocomplete="new-password" placeholder="••••••"
+            style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label for="setting-rekordbox-cipher" style="display:block; font-weight:500; margin-bottom:6px;">Cipher compatibility</label>
+          <select id="setting-rekordbox-cipher" name="rekordboxCipherCompatibility"
+            style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; background:#fff; font-size:14px;">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4" selected>4 (default)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset style="border:1px solid #e5e7eb; border-radius:12px; padding:18px 20px 20px;">
+    <legend style="padding:0 8px; font-weight:600; color:#111827;">Copilot</legend>
+    <div style="display:grid; gap:14px; margin-top:6px;">
+      <div style="display:grid; grid-template-columns: 1fr 1.2fr; gap:14px;">
+        <div>
+          <label for="setting-copilot-provider" style="display:block; font-weight:500; margin-bottom:6px;">Provider</label>
+          <select id="setting-copilot-provider" name="copilotProvider"
+            style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; background:#fff; font-size:14px;">
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="openai-compatible">OpenAI-compatible (OpenRouter, Ollama gateway, etc.)</option>
+          </select>
+        </div>
+        <div>
+          <label for="setting-copilot-model" style="display:block; font-weight:500; margin-bottom:6px;">Model</label>
+          <input id="setting-copilot-model" name="copilotModel" type="text"
+            placeholder="gpt-4o · claude-3-5-sonnet-latest · deepseek-chat · etc."
+            style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        </div>
+      </div>
+      <div>
+        <label for="setting-copilot-api-key" style="display:block; font-weight:500; margin-bottom:6px;">COPILOT_API_KEY</label>
+        <input id="setting-copilot-api-key" name="copilotApiKey" type="password" autocomplete="new-password" placeholder="sk-... · sk-ant-... · etc."
+          style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+      </div>
+      <div>
+        <label for="setting-copilot-base-url" style="display:block; font-weight:500; margin-bottom:6px;">COPILOT_BASE_URL (optional)</label>
+        <input id="setting-copilot-base-url" name="copilotBaseUrl" type="url" placeholder="https://api.openai.com/v1"
+          style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        <p style="margin:6px 2px 0; color:#6b7280; font-size:12.5px;">
+          Only required for providers other than the official OpenAI or Anthropic endpoints.
+        </p>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset style="border:1px solid #e5e7eb; border-radius:12px; padding:18px 20px 20px;">
+    <legend style="padding:0 8px; font-weight:600; color:#111827;">Advanced</legend>
+    <div style="display:grid; gap:14px; margin-top:6px;">
+      <div>
+        <label for="setting-intelligence-api-url" style="display:block; font-weight:500; margin-bottom:6px;">INTELLIGENCE_JOBS_API_URL (optional)</label>
+        <input id="setting-intelligence-api-url" name="intelligenceJobsApiUrl" type="url" placeholder="https://..."
+          style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+      </div>
+      <div>
+        <label for="setting-log-level" style="display:block; font-weight:500; margin-bottom:6px;">LOG_LEVEL</label>
+        <select id="setting-log-level" name="logLevel"
+          style="width:100%; max-width:220px; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; background:#fff; font-size:14px;">
+          <option value="fatal">fatal</option>
+          <option value="error">error</option>
+          <option value="warn">warn</option>
+          <option value="info" selected>info (default)</option>
+          <option value="debug">debug</option>
+          <option value="trace">trace</option>
+        </select>
+      </div>
+    </div>
+  </fieldset>
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:4px;">
+    <div id="settings-save-status" style="color:#6b7280; font-size:13px; min-height:18px;"></div>
+    <div style="display:flex; gap:10px;">
+      <button id="settings-cancel" type="button"
+        style="padding:9px 16px; border:1px solid #d1d5db; background:#fff; color:#111827; border-radius:8px; cursor:pointer; font-weight:500;">
+        Cancel
+      </button>
+      <button id="settings-save" type="submit"
+        style="padding:9px 18px; border:none; background:#111827; color:#fff; border-radius:8px; cursor:pointer; font-weight:600;">
+        Save changes
+      </button>
+    </div>
+  </div>
+</form>
+`;
+
+  panel.appendChild(
+    card,
+  );
+
+  const closeBtn =
+    card.querySelector<
+      HTMLButtonElement
+    >(
+      '#settings-close',
+    );
+
+  if (
+    closeBtn !==
+    null
+  ) {
+    closeBtn.addEventListener(
+      'click',
+      closeSettingsPanel,
+    );
+  }
+
+  const cancelBtn =
+    card.querySelector<
+      HTMLButtonElement
+    >(
+      '#settings-cancel',
+    );
+
+  if (
+    cancelBtn !==
+    null
+  ) {
+    cancelBtn.addEventListener(
+      'click',
+      closeSettingsPanel,
+    );
+  }
+
+  panel.addEventListener(
+    'click',
+    (event) => {
+      if (
+        event.target ===
+        panel
+      ) {
+        closeSettingsPanel();
+      }
+    },
+  );
+
+  const form =
+    card.querySelector<
+      HTMLFormElement
+    >(
+      '#settings-form',
+    );
+
+  if (
+    form !==
+    null
+  ) {
+    form.addEventListener(
+      'submit',
+      async (
+        event,
+      ) => {
+        event.preventDefault();
+
+        syncDraftFromInputs();
+        setSettingsSaveStatus(
+          'saving',
+          'Saving…',
+        );
+
+        try {
+          const saved =
+            await window
+              .djSync
+              .settings
+              .save(
+                {
+                  ...draftSettings,
+                },
+              );
+
+          draftSettings =
+            {
+              ...DRAFT_SETTINGS_DEFAULTS,
+              ...saved,
+            };
+
+          renderDraftIntoInputs();
+
+          apply({
+            ...snapshot,
+            activities: [
+              ...snapshot.activities,
+              withActivity({
+                label:
+                  'Settings saved',
+                detail:
+                  'Restart the application to apply the new configuration.',
+                status:
+                  'success',
+              }),
+            ].slice(
+              -100,
+            ),
+          });
+
+          setSettingsSaveStatus(
+            'saved',
+          );
+        } catch (
+          error: unknown
+        ) {
+          setSettingsSaveStatus(
+            'error',
+            error instanceof Error
+              ? error.message
+              : String(
+                  error,
+                ),
+          );
+        }
+      },
+    );
+  }
+
+  setSettingsSaveStatus(
+    'idle',
+  );
+
+  return panel;
+}
+
+async function openSettingsPanel():
+  Promise<void> {
+  if (
+    settingsOpen &&
+    settingsPanel !==
+      null
+  ) {
+    return;
+  }
+
+  settingsOpen =
+    true;
+
+  const stored =
+    await window
+      .djSync
+      .settings
+      .get()
+      .catch(
+        () =>
+          ({} as UserSettings),
+      );
+
+  draftSettings =
+    {
+      ...DRAFT_SETTINGS_DEFAULTS,
+      ...stored,
+    };
+
+  const panel =
+    buildSettingsPanel();
+
+  if (
+    !document
+      .body
+      .contains(
+        panel,
+      )
+  ) {
+    document
+      .body
+      .appendChild(
+        panel,
+      );
+  }
+
+  renderDraftIntoInputs();
+}
+
+function installSettingsOverlay():
+  void {
+  buildSettingsFloatingButton();
+
+  const openSettingsFromLanding =
+    document.querySelector<
+      HTMLButtonElement
+    >(
+      '#settings-open-button',
+    );
+
+  if (
+    openSettingsFromLanding !==
+    null
+  ) {
+    openSettingsFromLanding.addEventListener(
+      'click',
+      () => {
+        void openSettingsPanel();
+      },
+    );
   }
 }
 
@@ -907,7 +2089,55 @@ const ui =
     },
   });
 
+applyDsViewMode(
+  activeView,
+);
+
+ensureViewModeObserver();
+
 installNavigationController();
+
+installSettingsOverlay();
+
+function handleTrackSelected(
+  event: Event,
+): void {
+  const detail =
+    (event as CustomEvent).detail as unknown;
+
+  if (!detail || typeof detail !== 'object') {
+    return;
+  }
+
+  const candidate = detail as {
+    identity?: { id?: unknown };
+    metadata?: Record<string, unknown>;
+    technical?: Record<string, unknown>;
+  };
+
+  if (
+    typeof candidate.identity?.id !==
+      'string'
+  ) {
+    return;
+  }
+
+  const track = toProductionTrack(
+    detail as Parameters<
+      typeof toProductionTrack
+    >[0],
+  );
+
+  apply({
+    ...snapshot,
+    track,
+  });
+}
+
+window.addEventListener(
+  'dj-sync:track-selected',
+  handleTrackSelected,
+);
 
 applicationSubscription =
   window.djSync.application.subscribe(
@@ -934,6 +2164,10 @@ window.addEventListener(
     applicationSubscription?.();
     applicationSubscription =
       null;
+    window.removeEventListener(
+      'dj-sync:track-selected',
+      handleTrackSelected,
+    );
     ui.destroy();
   },
   { once: true },
@@ -981,4 +2215,5 @@ async function refreshCopilotStatus(): Promise<void> {
 }
 
 void refreshCopilotStatus();
+void refreshPendingAction();
 void refresh();

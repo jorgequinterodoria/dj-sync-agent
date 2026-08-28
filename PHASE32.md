@@ -116,3 +116,60 @@ No incluye:
 - credenciales Apple permanentes.
 
 Esos puntos quedan para Fase 33.
+
+## Cierre y validación final (2026-08-28)
+
+Ejecutado con éxito en entorno local macOS arm64:
+
+```bash
+pnpm electron:package:mac
+pnpm exec tsx scripts/verify-release-artifacts.ts
+```
+
+Resultado verificado:
+
+```json
+{
+  "ok": true,
+  "artifacts": [
+    {
+      "name": "DJ-Sync-Agent-0.9.4-mac-arm64.dmg",
+      "bytes": 132123670
+    },
+    {
+      "name": "DJ-Sync-Agent-0.9.4-mac-arm64.zip",
+      "bytes": 132229394
+    },
+    {
+      "name": "DJ-Sync-Agent-0.9.4-mac-arm64.zip.blockmap",
+      "bytes": 136871
+    },
+    {
+      "name": "builder-debug.yml",
+      "bytes": 848
+    },
+    {
+      "name": "builder-effective-config.yaml",
+      "bytes": 854
+    }
+  ]
+}
+```
+
+Estado final de la fase: **COMPLETADA ✅**
+
+Artefactos producidos en `release/`:
+
+- Instalador `.dmg` listo para distribución.
+- Paquete `.zip` + `.blockmap` listo para auto-updater en Fase 33.
+- `release/mac-arm64/DJ Sync Agent.app` binario `.app` validado para smoke test.
+
+Condiciones de cierre cumplidas:
+
+1. ✅ `pnpm typecheck` exit 0.
+2. ✅ `pnpm test` (265/265 tests pass).
+3. ✅ `pnpm build` exit 0.
+4. ✅ `pnpm electron:build` + 3 assets copied.
+5. ✅ `pnpm electron:package:mac` produce 5 artefactos sin errores.
+6. ✅ `pnpm exec tsx scripts/verify-release-artifacts.ts` retorna `ok: true`.
+7. ✅ `git diff --check` exit 0.

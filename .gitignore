@@ -1,4 +1,11 @@
-# Secrets / local configuration
+# ============================================================
+# DJ Sync Agent — .gitignore
+#   Keep only source code, config & docs in the repo.
+#   Never commit secrets, build outputs, artifacts, deps, or
+#   OS/editor noise.
+# ============================================================
+
+# ---------- Secrets / local environment ----------
 .env
 .env.*
 !.env.example
@@ -6,50 +13,83 @@
 *.secret
 *.key
 *.pem
-dist/
 
-# macOS
-.DS_Store
-
-# Dependencies
+# ---------- Dependencies ----------
 node_modules/
 .pnpm-store/
+.yarn/
+bun.lockb
 
-# Runtime state / generated reports
-reports/*.json
-reports/*.ndjson
-reports/*.lock/
-reports/rekordbox-*.json
-reports/rekordbox-*.ndjson
+# ---------- Build outputs (NEVER commit) ----------
+dist/
+out/
+build/
+release/
+*.tsbuildinfo
 
-# Logs
+# ---------- Electron package artifacts (belt + suspenders) ----------
+# `release/` is already ignored above.  These lines are extra safety
+# so a stray file in the repo root is also never staged:
+*.dmg
+*.pkg
+*.msi
+*.exe
+*.zip
+*.blockmap
+latest*.yml
+latest*.json
+
+# ---------- Logs & debug dumps ----------
 *.log
 logs/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Local Supabase overrides
+# ---------- Test tooling / coverage ----------
+coverage/
+.nyc_output/
+.istanbul_output/
+.test-report/
+
+# ---------- Bundler / task caches ----------
+.turbo/
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+.svelte-kit/
+
+# ---------- Runtime state & generated reports ----------
+reports/
+
+# ---------- Supabase CLI local state ----------
 supabase/.env.local
 supabase/functions/.env
 supabase/functions/.env.*
-
-# Editor / OS
-.vscode/
-.idea/
-
-# Local runtime state / generated data
-reports/
-*.log
-.DS_Store
-
-# Local secrets
-.env
-.env.*
-!.env.example
-*.secret
-*.key
-*.pem
-
-# Local service configuration
-.docker/
-
-# Supabase CLI local state
 supabase/.temp/
+
+# ---------- Docker / local infra ----------
+.docker/
+docker-compose.override.yml
+
+# ---------- macOS ----------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ---------- Editors & IDEs ----------
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.schema.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ---------- Network / temp mounts ----------
+Network Trash Folder
+Temporary Items
+.apdisk

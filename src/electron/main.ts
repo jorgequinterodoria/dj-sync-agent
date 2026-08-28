@@ -10,6 +10,11 @@ import {
 } from '../config/env.js';
 
 import {
+  applyUserSettingsToEnv,
+  readUserSettings,
+} from '../config/user-settings.store.js';
+
+import {
   createDJSyncService,
   readServiceEnvironment,
 } from '../runtime/dj-sync-service.js';
@@ -56,10 +61,37 @@ import type {
   AppInfo,
 } from './ipc/contracts.js';
 
+import {
+  configureAutoUpdater,
+} from './auto-updater.js';
+
 let mainWindow:
   | BrowserWindow
   | null =
   null;
+
+process.on(
+  'unhandledRejection',
+  (
+    reason: unknown,
+  ) => {
+    console.error(
+      '[dj-sync-agent] unhandledRejection (graceful degrade):',
+      reason instanceof Error
+        ? reason.message
+        : String(
+            reason,
+          ),
+    );
+  },
+);
+
+const userSettings =
+  readUserSettings();
+
+applyUserSettingsToEnv(
+  userSettings,
+);
 
 const config =
   loadConfig();
@@ -284,18 +316,42 @@ app.whenReady().then(
 
     registerApplicationEvents();
 
-    registerIpcHandlers({
-      applicationState,
-      library,
-      getAppInfo,
-    });
+    try {
+      registerIpcHandlers({
+        applicationState,
+        library,
+        getAppInfo,
+      });
+    } catch (error: unknown) {
+      console.error(
+        '[dj-sync-agent] registerIpcHandlers degraded:',
+        error instanceof Error
+          ? error.message
+          : String(
+              error,
+            ),
+      );
+    }
 
-    registerCopilotUiIpc({
-      chat: copilotUi,
-      actions: copilotActions,
-    });
+    try {
+      registerCopilotUiIpc({
+        chat: copilotUi,
+        actions: copilotActions,
+      });
+    } catch (error: unknown) {
+      console.error(
+        '[dj-sync-agent] registerCopilotUiIpc degraded:',
+        error instanceof Error
+          ? error.message
+          : String(
+              error,
+            ),
+      );
+    }
 
     createMainWindow();
+
+    configureAutoUpdater();
 
     applicationState.startPolling();
 

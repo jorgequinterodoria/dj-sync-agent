@@ -341,6 +341,17 @@ const libraryDetail =
     '#library-detail',
   );
 
+const HAS_LEGACY_DASHBOARD =
+  Boolean(
+    serviceCard &&
+      databaseCard &&
+      serverCard &&
+      syncCard,
+  );
+
+const HAS_LEGACY_ENVIRONMENT =
+  Boolean(appVersion ?? appDatabase);
+
 function setText(
   element:
     | HTMLElement
@@ -1254,6 +1265,14 @@ function renderApplicationState(
   snapshot:
     DJSyncApplicationSnapshot,
 ): void {
+  if (!HAS_LEGACY_DASHBOARD) {
+    setText(
+      connectionStatus,
+      'Connected',
+    );
+    return;
+  }
+
   renderService(
     snapshot,
   );
@@ -1611,6 +1630,15 @@ function renderTrackDetail(
 
   selectedTrackId =
     track.identity.id;
+
+  window.dispatchEvent(
+    new CustomEvent(
+      'dj-sync:track-selected',
+      {
+        detail: track,
+      },
+    ),
+  );
 
   libraryDetail.innerHTML =
     `
@@ -2090,6 +2118,10 @@ async function restartService():
 
 async function loadAppInfo():
   Promise<void> {
+  if (!HAS_LEGACY_ENVIRONMENT) {
+    return;
+  }
+
   try {
     const info =
       await window.djSync

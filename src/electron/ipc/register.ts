@@ -28,6 +28,11 @@ import {
   createDefaultDJSyncIntelligenceService,
 } from '../../runtime/dj-sync-intelligence.js';
 
+import {
+  readUserSettings,
+  writeUserSettings,
+} from '../../config/user-settings.store.js';
+
 export interface RegisterIpcHandlersOptions {
   applicationState:
     DJSyncApplicationState;
@@ -43,15 +48,80 @@ export function registerIpcHandlers(
   options:
     RegisterIpcHandlersOptions,
 ): void {
-  const audioService =
-    createDefaultDJSyncAudioApplicationService(
-      options.library,
-    );
+  let audioService:
+    | ReturnType<
+      typeof createDefaultDJSyncAudioApplicationService
+    >
+    | null =
+    null;
+  let audioInitError:
+    | string
+    | null =
+    null;
 
-  const intelligenceService =
-    createDefaultDJSyncIntelligenceService(
-      options.library,
-    );
+  let intelligenceService:
+    | ReturnType<
+      typeof createDefaultDJSyncIntelligenceService
+    >
+    | null =
+    null;
+  let intelligenceInitError:
+    | string
+    | null =
+    null;
+
+  try {
+    audioService =
+      createDefaultDJSyncAudioApplicationService(
+        options.library,
+      );
+  } catch (error) {
+    audioInitError =
+      error instanceof Error
+        ? error.message
+        : String(error);
+  }
+
+  try {
+    intelligenceService =
+      createDefaultDJSyncIntelligenceService(
+        options.library,
+      );
+  } catch (error) {
+    intelligenceInitError =
+      error instanceof Error
+        ? error.message
+        : String(error);
+  }
+
+  function getAudioServiceOrThrow():
+    | ReturnType<
+      typeof createDefaultDJSyncAudioApplicationService
+    > {
+    if (audioService === null) {
+      throw new Error(
+        `Audio service unavailable: ${audioInitError ?? 'Unknown error'}`,
+      );
+    }
+
+    return audioService;
+  }
+
+  function getIntelligenceServiceOrThrow():
+    | ReturnType<
+      typeof createDefaultDJSyncIntelligenceService
+    > {
+    if (intelligenceService === null) {
+      throw new Error(
+        `Intelligence service unavailable: ${
+          intelligenceInitError ??
+          'Configure SYNC_AGENT_ID and SYNC_API_KEY in Settings.'
+        }`,
+      );
+    }
+
+    return intelligenceService;
+  }
 
   ipcMain.handle(
     IPC_CHANNELS.appGetInfo,
@@ -144,9 +214,10 @@ export function registerIpcHandlers(
       _event,
       trackId: string,
     ) => {
-      return audioService.status(
-        trackId,
-      );
+      return getAudioServiceOrThrow()
+        .status(
+          trackId,
+        );
     },
   );
 
@@ -156,9 +227,10 @@ export function registerIpcHandlers(
       _event,
       trackId: string,
     ) => {
-      return audioService.analyze(
-        trackId,
-      );
+      return getAudioServiceOrThrow()
+        .analyze(
+          trackId,
+        );
     },
   );
 
@@ -168,7 +240,7 @@ export function registerIpcHandlers(
       _event,
       trackId: string,
     ) => {
-      return audioService
+      return getAudioServiceOrThrow()
         .analyzeAndPersist(
           trackId,
         );
@@ -181,9 +253,10 @@ export function registerIpcHandlers(
       _event,
       trackId: string,
     ) => {
-      return intelligenceService.get(
-        trackId,
-      );
+      return getIntelligenceServiceOrThrow()
+        .get(
+          trackId,
+        );
     },
   );
 
@@ -193,7 +266,7 @@ export function registerIpcHandlers(
       _event,
       trackId: string,
     ) => {
-      return intelligenceService
+      return getIntelligenceServiceOrThrow()
         .enqueueRefresh(
           trackId,
         );
@@ -206,7 +279,7 @@ export function registerIpcHandlers(
       _event,
       trackId: string,
     ) => {
-      return intelligenceService
+      return getIntelligenceServiceOrThrow()
         .enqueuePreferenceUpdate(
           trackId,
         );
@@ -219,10 +292,32 @@ export function registerIpcHandlers(
       _event,
       trackId: string,
     ) => {
-      return intelligenceService
+      return getIntelligenceServiceOrThrow()
         .enqueueRetire(
           trackId,
         );
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.settingsGet,
+    async () => {
+      return readUserSettings();
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.settingsSave,
+    async (
+      _event,
+      input,
+    ) => {
+      const saved =
+        writeUserSettings(
+          input,
+        );
+
+      return saved;
     },
   );
 }

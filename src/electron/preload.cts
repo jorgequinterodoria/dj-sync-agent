@@ -54,6 +54,9 @@ const IPC_CHANNELS = {
   copilotActionReject:
     'copilot:action-reject',
 
+  copilotActionGetCurrent:
+    'copilot:action-get-current',
+
   intelligenceGet:
     'intelligence:get',
 
@@ -65,6 +68,12 @@ const IPC_CHANNELS = {
 
   intelligenceRetire:
     'intelligence:retire',
+
+  settingsGet:
+    'settings:get',
+
+  settingsSave:
+    'settings:save',
 } as const;
 
 contextBridge.exposeInMainWorld(
@@ -196,6 +205,11 @@ contextBridge.exposeInMainWorld(
           IPC_CHANNELS.copilotActionReject,
           actionId,
         ),
+
+      getCurrent: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.copilotActionGetCurrent,
+        ),
     },
 
     audio: {
@@ -269,6 +283,24 @@ contextBridge.exposeInMainWorld(
           ipcRenderer.invoke(
             IPC_CHANNELS.intelligenceRetire,
             trackId,
+          ),
+    },
+
+    settings: {
+      get:
+        () =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.settingsGet,
+          ),
+
+      save:
+        (
+          input:
+            unknown,
+        ) =>
+          ipcRenderer.invoke(
+            IPC_CHANNELS.settingsSave,
+            input,
           ),
     },
   },

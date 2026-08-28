@@ -451,7 +451,10 @@ function renderShell(
 ): string {
   return `
     <div class="ds-shell">
-      <header class="ds-topbar">
+      <header
+        class="ds-topbar"
+        data-ds-region="topbar"
+      >
         <div class="ds-brand">
           <div class="ds-brand-mark">
             DS
@@ -506,6 +509,7 @@ function renderShell(
       <main class="ds-main">
         <section
           class="ds-page-heading"
+          data-ds-region="heading"
           aria-labelledby="ds-page-title"
         >
           <div>
@@ -570,13 +574,17 @@ function renderShell(
         }
 
         <div class="ds-layout">
-          <div class="ds-primary-column">
+          <div
+            class="ds-primary-column"
+            data-ds-region="primary"
+          >
             ${renderTrack(
               snapshot,
             )}
 
             <section
               class="ds-card ds-copilot-card"
+              data-ds-region="copilot"
               aria-labelledby="ds-copilot-title"
             >
               <div class="ds-card-header">
@@ -663,7 +671,10 @@ function renderShell(
             )}
           </div>
 
-          <aside class="ds-secondary-column">
+          <aside
+            class="ds-secondary-column"
+            data-ds-region="secondary"
+          >
             <section
               class="ds-card"
               aria-labelledby="ds-activity-title"
@@ -821,6 +832,13 @@ export function mountProductionUi(
           '#ds-copilot-input',
         );
 
+      const previousMessages =
+        options.root.querySelector<
+          HTMLElement
+        >(
+          '.ds-message-list',
+        );
+
       const composerDraft =
         previousComposer?.value ??
         '';
@@ -839,9 +857,25 @@ export function mountProductionUi(
         previousComposer?.selectionEnd ??
         composerDraft.length;
 
-      const scrollTop =
+      const composerScrollTop =
         previousComposer?.scrollTop ??
         0;
+
+      let messagesScrollTop =
+        previousMessages?.scrollTop ??
+        0;
+
+      const messagesNearBottom =
+        previousMessages ===
+          null
+          ? true
+          : previousMessages
+              .scrollTop +
+              previousMessages
+                .clientHeight >=
+              previousMessages
+                .scrollHeight -
+                48;
 
       options.root.innerHTML =
         renderShell(
@@ -852,6 +886,38 @@ export function mountProductionUi(
         options.root,
         options.callbacks,
       );
+
+      const nextMessages =
+        options.root.querySelector<
+          HTMLElement
+        >(
+          '.ds-message-list',
+        );
+
+      if (
+        nextMessages !==
+        null
+      ) {
+        if (messagesNearBottom) {
+          nextMessages.scrollTop =
+            nextMessages.scrollHeight;
+        } else {
+          const maxTop =
+            Math.max(
+              0,
+              nextMessages
+                .scrollHeight -
+                nextMessages
+                  .clientHeight,
+            );
+
+          nextMessages.scrollTop =
+            Math.min(
+              messagesScrollTop,
+              maxTop,
+            );
+        }
+      }
 
       const composer =
         options.root.querySelector<
@@ -868,7 +934,7 @@ export function mountProductionUi(
           composerDraft;
 
         composer.scrollTop =
-          scrollTop;
+          composerScrollTop;
 
         if (
           composerWasFocused

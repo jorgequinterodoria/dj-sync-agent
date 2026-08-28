@@ -42,7 +42,7 @@
             <h1>DJ Sync Agent</h1>
 
             <p>
-              Local sync control center
+              Centro de control de sincronización local
             </p>
           </div>
         </div>
@@ -54,7 +54,7 @@
           >
             <span class="status-dot"></span>
             <span id="connection-status">
-              Connecting...
+              Conectando...
             </span>
           </span>
 
@@ -88,7 +88,25 @@
           type="button"
           data-view="library"
         >
-          Library
+          Biblioteca
+        </button>
+
+        <button
+          id="nav-audio"
+          class="nav-button"
+          type="button"
+          data-view="audio"
+        >
+          Audio
+        </button>
+
+        <button
+          id="nav-settings"
+          class="nav-button"
+          type="button"
+          data-view="settings"
+        >
+          Ajustes
         </button>
       </nav>
 
@@ -211,6 +229,106 @@
                 Select a track to view details.
               </div>
             </aside>
+          </section>
+        </section>
+
+        <section
+          id="view-audio"
+          class="view-section view-hidden"
+          aria-labelledby="audio-heading"
+          data-managed-by="audio-controller"
+        >
+          <section class="library-toolbar">
+            <div>
+              <div class="eyebrow">
+                AUDIO ANALYSIS
+              </div>
+
+              <h2 id="audio-heading">
+                Audio Analysis Workspace
+              </h2>
+
+              <p class="panel-subtitle">
+                Batch and per-track analysis utilities. Loading the audio
+                environment…
+              </p>
+            </div>
+          </section>
+        </section>
+
+        <section
+          id="view-settings"
+          class="view-section view-hidden"
+          aria-labelledby="settings-heading"
+        >
+          <section class="library-toolbar">
+            <div>
+              <div class="eyebrow">
+                APPLICATION
+              </div>
+
+              <h2 id="settings-heading">
+                Settings
+              </h2>
+
+              <p class="panel-subtitle">
+                Configure identifiers, Copilot provider and Rekordbox paths.
+                Click the ⚙️ button top-right to open the settings form.
+              </p>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+              <button
+                id="settings-open-button"
+                class="button button-primary"
+                type="button"
+              >
+                Open Settings Form
+              </button>
+            </div>
+          </section>
+
+          <section class="library-layout" style="display:block;">
+            <article
+              class="panel library-panel"
+              style="padding:28px 32px;"
+            >
+              <h3 style="margin:0 0 10px;">
+                Configuration location
+              </h3>
+
+              <p style="margin:0 0 16px; color:#4b5563;">
+                Settings are persisted to the secure local folder
+                <code
+                  style="padding:2px 8px; background:#f3f4f6; border-radius:6px;"
+                >~/.config/dj-sync-agent/settings.json</code>
+                with file mode <code style="padding:2px 6px; background:#f3f4f6; border-radius:6px;">0600</code>.
+              </p>
+
+              <div style="display:grid; grid-template-columns: 1.1fr 1fr; gap:24px;">
+                <div>
+                  <h4 style="margin:0 0 8px;">
+                    Values you can configure here
+                  </h4>
+
+                  <ul style="margin:0; padding-left:20px; line-height:1.75; color:#374151;">
+                    <li>SYNC_AGENT_ID, SYNC_API_URL, SYNC_API_KEY</li>
+                    <li>REKORDBOX_DB_PATH, REKORDBOX_DB_KEY, Cipher compatibility (default 4)</li>
+                    <li>Copilot provider: OpenAI, Anthropic, OpenAI-compatible</li>
+                    <li>COPILOT_API_KEY, COPILOT_BASE_URL, COPILOT_MODEL</li>
+                    <li>Intelligence jobs API URL and LOG_LEVEL</li>
+                  </ul>
+                </div>
+
+                <div
+                  class="empty-state"
+                  style="margin:0;"
+                >
+                  💡 Tip: after saving changes, restart DJ Sync Agent so the new
+                  settings are picked up by the background services.
+                </div>
+              </div>
+            </article>
           </section>
         </section>
       </main>
