@@ -92,7 +92,9 @@ button {
 .app-shell {
   position: relative;
   width: 100vw;
+  width: 100%;
   height: 100vh;
+  height: 100%;
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
   grid-template-rows: 1fr var(--np-bar-h);
@@ -925,4 +927,139 @@ table.dense-table tbody td {
   margin: 10px 0 22px;
   font-size: 14.5px;
   line-height: 1.7;
+}
+
+/* ================================================================
+   RESPONSIVE · 13" laptops / 1280–1440px
+   Prioridad: que la barra Now Playing 72px NO se corte
+=============================================================== */
+
+@media (max-width: 1600px) {
+  :root {
+    --sidebar-w: 220px;
+    --content-px: 22px;
+  }
+  .input-search { min-width: 210px; }
+  main.app-content { padding: 22px var(--content-px) 20px; }
+  .toolbar { padding: 14px var(--content-px); }
+  aside.app-sidebar {
+    gap: 16px;
+    padding: 18px 12px 14px;
+    overflow-y: auto;
+  }
+  .main-panel.has-copilot {
+    grid-template-columns: 1fr 340px;
+  }
+}
+
+@media (max-width: 1440px) {
+  :root {
+    --sidebar-w: 208px;
+    --content-px: 20px;
+    --np-bar-h: 64px;
+  }
+  .app-sidebar .brand-title .brand-sub,
+  .app-sidebar .footer-cta p {
+    display: none;
+  }
+  .app-sidebar .footer-cta {
+    padding: 12px 10px;
+    font-size: 11.5px;
+  }
+  .input-search { min-width: 190px; }
+  .toolbar-right { gap: 6px; flex-wrap: wrap; }
+  main.app-content { padding: 20px var(--content-px) 18px; }
+  .toolbar { padding: 12px var(--content-px); }
+  .toolbar-left h2 { font-size: 15px; }
+  .section { padding: 18px var(--content-px); }
+
+  /* Biblioteca: ocultar columnas secundarias para que entre */
+  #view-biblioteca .dense-table thead th:nth-child(7),
+  #view-biblioteca .dense-table thead th:nth-child(8),
+  #view-biblioteca .dense-table tbody td:nth-child(7),
+  #view-biblioteca .dense-table tbody td:nth-child(8) {
+    display: none;
+  }
+  table.dense-table thead th { padding: 9px 12px; font-size: 10.5px; }
+  table.dense-table tbody td { padding: 8px 12px; font-size: 12.5px; height: 36px; }
+
+  /* Now Playing: reducir paddings en 13" */
+  .app-nowplaying { gap: 16px; padding: 0 16px; }
+  .np-art { width: 40px; height: 40px; font-size: 11px; }
+  .np-title { font-size: 12.5px; }
+  .np-artist { font-size: 11px; }
+  .np-center { max-width: 620px; }
+  .np-btn { width: 34px; height: 34px; font-size: 14px; }
+  .np-btn.np-play { width: 40px; height: 40px; font-size: 16px; }
+
+  /* Copilot right panel más estrecho */
+  .main-panel.has-copilot {
+    grid-template-columns: 1fr 320px;
+  }
+  .prompt-chip { font-size: 12px; padding: 10px 12px; }
+  .cp-composer textarea {
+    min-height: 40px;
+    font-size: 12.5px;
+  }
+  .cp-composer .send {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+@media (max-width: 1280px) {
+  :root {
+    --sidebar-w: 192px;
+    --content-px: 16px;
+    --np-bar-h: 60px;
+  }
+  html, body { font-size: 13.2px; }
+  .input-search { min-width: 160px; }
+  select.select-chip, .input-chip, .input-search {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+  .toolbar-left { gap: 10px; }
+  .toolbar-left h2 { font-size: 14.5px; }
+  .toolbar-left .count { font-size: 12px; }
+  aside.app-sidebar {
+    gap: 12px;
+    padding: 14px 10px 12px;
+  }
+  .app-sidebar .brand {
+    gap: 10px;
+  }
+  .app-sidebar .brand-title {
+    font-size: 13px;
+  }
+  .main-panel.has-copilot {
+    grid-template-columns: 1fr 300px;
+  }
+  .app-nowplaying { gap: 12px; padding: 0 14px; }
+  .np-right {
+    gap: 8px;
+  }
+  .np-meta-pills { gap: 6px; }
+  .pill-key { font-size: 11px; padding: 4px 8px; }
+
+  /* Tabla biblioteca: ocultar también GÉNERO si < 1280 (TRACK/ARTISTA/BPM/KEY) */
+  #view-biblioteca .dense-table thead th:nth-child(6),
+  #view-biblioteca .dense-table tbody td:nth-child(6) {
+    display: none;
+  }
+}
+
+/* Asegurar que el grid NO desborde viewport si la ventana se estira
+   (body ya tiene overflow:hidden; position:fixed inset:0) */
+.app-shell,
+.app-sidebar,
+.main-panel,
+.app-nowplaying {
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Sidebar: overflow-y por si hay demasiados nav items */
+aside.app-sidebar > * {
+  min-width: 0;
 }

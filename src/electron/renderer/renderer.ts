@@ -7,6 +7,7 @@ import type {
 } from '../ipc/contracts.js';
 
 import { bindNewSidebarNav } from './production-ui-entry.js';
+import { AudioPlaybackController, resolveSelectedAudioPath } from './audio-playback.js';
 import type { RecommendationResult } from '../../recommendations/recommendation-types.js';
 import {
   buildPhase62RecommendationContext,
@@ -2354,36 +2355,329 @@ export function generateWaveform(
   container.appendChild(fragment);
 }
 
-export function initNowPlayingControls(): void {
-  if (typeof document === 'undefined') {
+function shDispatchTrackSelectedEvent(
+  detail: {
+    readonly identity: { readonly id?: unknown };
+    readonly primaryFile: { readonly localPath?: unknown; readonly path?: unknown };
+    readonly metadata?: { readonly title?: unknown; readonly artist?: unknown };
+    readonly technical?: { readonly lengthSeconds?: unknown };
+  },
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent('dj-sync:track-selected', { detail }));
+    // eslint-disable-next-line no-console
+    console.log('[audio-flow] dispatched dj-sync:track-selected', {
+      id: detail.identity?.id,
+      localPath: typeof detail.primaryFile?.localPath === 'string' ? detail.primaryFile.localPath : null,
+      path: typeof detail.primaryFile?.path === 'string' ? detail.primaryFile.path : null,
+      title: typeof detail.metadata?.title === 'string' ? detail.metadata.title : null,
+    });
+  } catch (error) {
+    console.warn('[audio-playback] dispatch track-selected failed:', error);
+  }
+}
+
+let shLastPlayedTrackId: string | null = null;
+let shHydrateInflightTrackId: string | null = null;
+let shPendingHydrateContext: { readonly title?: string | null | undefined; readonly artist?: string | null | undefined } | null = null;
+
+async function shHydrateAndPlayTrackById(
+  trackId: string,
+  ctx?: { readonly title?: string | null | undefined; readonly artist?: string | null | undefined },
+): Promise<void> {
+  if (!trackId) return;
+  // eslint-disable-next-line no-console
+  console.log('[audio-flow] shHydrateAndPlayTrackById called', {
+    trackId,
+    title: ctx?.title ?? null,
+    artist: ctx?.artist ?? null,
+    shLastPlayedTrackId,
+    shHydrateInflightTrackId,
+  });
+  if (trackId === shLastPlayedTrackId) return;
+  if (trackId === shHydrateInflightTrackId) {
+    shPendingHydrateContext = ctx ?? shPendingHydrateContext;
     return;
   }
+  const library = api().library;
+  if (!library) return;
 
-  const playBtn = document.querySelector<HTMLButtonElement>(
-    '#np-play-btn',
-  );
-  if (playBtn) {
-    let playing = playBtn.textContent?.includes('⏸') ?? false;
-    playBtn.addEventListener('click', () => {
-      playing = !playing;
-      playBtn.textContent = playing ? '⏸' : '⏵';
+  shHydrateInflightTrackId = trackId;
+  shPendingHydrateContext = ctx ?? shPendingHydrateContext;
+  try {
+    let resolved: {
+      readonly id: string;
+      readonly title: string | null;
+      readonly artist: string | null;
+      readonly lengthSeconds: number | null;
+      readonly localPath: string | null;
+      readonly path: string | null;
+    } | null = null;
+
+    if (typeof library.get === 'function') {
+      try {
+        const raw = await library.get(trackId);
+        const idRaw = (raw as any)?.identity?.id ?? (raw as any)?.id ?? trackId;
+        const lp = typeof (raw as any)?.primaryFile?.localPath === 'string'
+          ? (raw as any).primaryFile.localPath
+          : typeof (raw as any)?.filePath === 'string'
+            ? (raw as any).filePath
+            : null;
+        const p = typeof (raw as any)?.primaryFile?.path === 'string'
+          ? (raw as any).primaryFile.path
+          : null;
+        const title = typeof (raw as any)?.metadata?.title === 'string'
+          ? (raw as any).metadata.title
+          : typeof (raw as any)?.title === 'string'
+            ? (raw as any).title
+            : null;
+        const artist = typeof (raw as any)?.metadata?.artist === 'string'
+          ? (raw as any).metadata.artist
+          : typeof (raw as any)?.artist === 'string'
+            ? (raw as any).artist
+            : null;
+        const lengthSeconds = typeof (raw as any)?.technical?.lengthSeconds === 'number'
+          ? (raw as any).technical.lengthSeconds
+          : typeof (raw as any)?.lengthSeconds === 'number'
+            ? (raw as any).lengthSeconds
+            : null;
+        if (lp || p) {
+          resolved = {
+            id: typeof idRaw === 'string' ? idRaw : trackId,
+            title,
+            artist,
+            lengthSeconds,
+            localPath: lp,
+            path: p,
+          };
+          // eslint-disable-next-line no-console
+          console.log('[audio-flow] library.get resolved track', resolved);
+        } else if (raw) {
+          // eslint-disable-next-line no-console
+          console.warn('[audio-flow] library.get returned track without path', {
+            id: idRaw,
+            title,
+            artist,
+            primaryFile: (raw as any)?.primaryFile ?? null,
+            filePath: (raw as any)?.filePath ?? null,
+          });
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('[audio-flow] library.get failed:', {
+          trackId,
+          name: error instanceof Error ? error.name : String(error),
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    if (!resolved && typeof library.list === 'function') {
+      const pendingCtx = shPendingHydrateContext;
+      const searchQ = [pendingCtx?.title, pendingCtx?.artist].filter((s) => typeof s === 'string' && s.trim().length > 0).join(' ').trim();
+      // eslint-disable-next-line no-console
+      console.log('[audio-flow] fallback library.list search', { trackId, search: searchQ || null });
+      if (searchQ || /^rec-/i.test(trackId) || /^tmp-/i.test(trackId)) {
+        try {
+          const page: any = await library.list({
+            limit: 20,
+            ...(searchQ ? { search: searchQ } : {}),
+          });
+          const items: any[] = Array.isArray(page?.items) ? page.items : [];
+          const title = (pendingCtx?.title ?? '').toLowerCase().trim();
+          const artist = (pendingCtx?.artist ?? '').toLowerCase().trim();
+          let best: any = null;
+          for (const item of items) {
+            const it = (item as any);
+            const t = typeof it?.title === 'string' ? it.title.toLowerCase() : '';
+            const a = typeof it?.artist === 'string' ? it.artist.toLowerCase() : '';
+            const lp = typeof it?.primaryFile?.localPath === 'string'
+              ? it.primaryFile.localPath
+              : typeof it?.filePath === 'string'
+                ? it.filePath
+                : null;
+            const p = typeof it?.primaryFile?.path === 'string' ? it.primaryFile.path : null;
+            if (!lp && !p) continue;
+            const score = (t && title && (t === title || title.includes(t) || t.includes(title)) ? 2 : 0)
+              + (a && artist && (a === artist || artist.includes(a) || a.includes(artist)) ? 1 : 0);
+            if (score > 0) {
+              best = { item, score };
+              if (score >= 3) break;
+            } else if (!best && (lp || p)) {
+              best = { item, score: 0 };
+            }
+          }
+          if (best?.item) {
+            const it = best.item;
+            const idRaw = it?.identity?.id ?? it?.id ?? trackId;
+            const lp = typeof it?.primaryFile?.localPath === 'string'
+              ? it.primaryFile.localPath
+              : typeof it?.filePath === 'string'
+                ? it.filePath
+                : null;
+            const p = typeof it?.primaryFile?.path === 'string' ? it.primaryFile.path : null;
+            const titleR = typeof it?.metadata?.title === 'string'
+              ? it.metadata.title
+              : typeof it?.title === 'string'
+                ? it.title
+                : null;
+            const artistR = typeof it?.metadata?.artist === 'string'
+              ? it.metadata.artist
+              : typeof it?.artist === 'string'
+                ? it.artist
+                : null;
+            const lengthSeconds = typeof it?.technical?.lengthSeconds === 'number'
+              ? it.technical.lengthSeconds
+              : typeof it?.lengthSeconds === 'number'
+                ? it.lengthSeconds
+                : null;
+            resolved = {
+              id: typeof idRaw === 'string' ? idRaw : trackId,
+              title: titleR,
+              artist: artistR,
+              lengthSeconds,
+              localPath: lp,
+              path: p,
+            };
+            // eslint-disable-next-line no-console
+            console.log('[audio-flow] library.list fallback resolved track', { ...resolved, bestScore: best.score });
+          }
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.warn('[audio-flow] library.list fallback failed:', {
+            trackId,
+            name: error instanceof Error ? error.name : String(error),
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    }
+
+    if (!resolved) {
+      // eslint-disable-next-line no-console
+      console.warn('[audio-playback] hydrate track: could not resolve local audio path', {
+        trackId,
+        title: shPendingHydrateContext?.title ?? null,
+        artist: shPendingHydrateContext?.artist ?? null,
+      });
+      return;
+    }
+
+    const id = resolved.id || trackId;
+    const lp = resolved.localPath;
+    const p = resolved.path;
+    if (!lp && !p) return;
+    shLastPlayedTrackId = id;
+    shDispatchTrackSelectedEvent({
+      identity: { id },
+      primaryFile: { localPath: lp, path: p },
+      metadata: { title: resolved.title, artist: resolved.artist },
+      technical: { lengthSeconds: resolved.lengthSeconds },
+    });
+  } finally {
+    if (shHydrateInflightTrackId === trackId) {
+      shHydrateInflightTrackId = null;
+      shPendingHydrateContext = null;
+    }
+  }
+}
+
+let nowPlayingPlayback: AudioPlaybackController | null = null;
+
+
+
+export function initNowPlayingControls(): void {
+  if (typeof document === 'undefined') return;
+
+  const playBtn = document.querySelector<HTMLButtonElement>('#np-play-btn');
+  const audioElement = document.querySelector<HTMLAudioElement>('#np-audio-element')
+    ?? (() => {
+      const element = document.createElement('audio');
+      element.id = 'np-audio-element';
+      element.preload = 'auto';
+      element.setAttribute('aria-hidden', 'true');
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      return element;
+    })();
+
+  nowPlayingPlayback = new AudioPlaybackController({
+    audio: audioElement,
+    onState: (state) => {
+      if (playBtn) playBtn.textContent = state.playing ? '⏸' : '⏵';
+      setText(document.getElementById('np-time-cur'), shFormatMs(state.currentTime * 1000));
+      setText(
+        document.getElementById('np-time-tot'),
+        state.duration != null ? shFormatMs(state.duration * 1000) : '—',
+      );
+    },
+  });
+
+  playBtn?.addEventListener('click', () => {
+    void nowPlayingPlayback?.toggle();
+  });
+
+  const volumeSlider = document.querySelector<HTMLInputElement>('#np-volume, #np-volume-slider');
+  if (volumeSlider) {
+    const syncVolume = () => nowPlayingPlayback?.setVolume(Number(volumeSlider.value));
+    volumeSlider.addEventListener('input', syncVolume);
+    syncVolume();
+  }
+
+  const waveSeek = document.getElementById('np-wave');
+  if (waveSeek) {
+    waveSeek.style.cursor = 'pointer';
+    waveSeek.addEventListener('pointerdown', (event) => {
+      try {
+        const rect = waveSeek.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        const pct = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+        nowPlayingPlayback?.seek(pct);
+      } catch (error) {
+        console.warn('[audio-playback] waveform seek failed:', error);
+      }
     });
   }
 
-  const volumeSlider = document.querySelector<HTMLInputElement>(
-    '#np-volume-slider',
-  );
-  const volumeLabel = document.querySelector<HTMLElement>(
-    '#np-volume-label',
-  );
-  if (volumeSlider && volumeLabel) {
-    const syncLabel = () => {
-      const pct = Number(volumeSlider.value) || 0;
-      volumeLabel.textContent = `${pct}%`;
+  window.addEventListener('dj-sync:track-selected', (event: Event) => {
+    const detail = (event as CustomEvent).detail as {
+      identity?: { id?: unknown };
+      primaryFile?: { localPath?: unknown; path?: unknown };
+      metadata?: { title?: unknown; artist?: unknown };
+      technical?: { lengthSeconds?: unknown };
     };
-    volumeSlider.addEventListener('input', syncLabel);
-    syncLabel();
-  }
+    const resolved = resolveSelectedAudioPath(detail);
+    if (!resolved) {
+      console.warn('[audio-playback] selected track has no local audio path');
+      return;
+    }
+    if (typeof resolved.id === 'string' && resolved.id) {
+      shLastPlayedTrackId = resolved.id;
+    }
+    // eslint-disable-next-line no-console
+    console.log('[audio-flow] AudioPlaybackController.load invoked', {
+      id: resolved.id,
+      path: resolved.path,
+      title: typeof detail.metadata?.title === 'string' ? detail.metadata.title : null,
+    });
+    void nowPlayingPlayback?.load({
+      id: resolved.id,
+      path: resolved.path,
+      title: typeof detail.metadata?.title === 'string' ? detail.metadata.title : null,
+      artist: typeof detail.metadata?.artist === 'string' ? detail.metadata.artist : null,
+      durationMs: typeof detail.technical?.lengthSeconds === 'number'
+        ? detail.technical.lengthSeconds * 1000
+        : null,
+    }, true).then((played) => {
+      // eslint-disable-next-line no-console
+      console.log('[audio-flow] AudioPlaybackController.load resolved', {
+        id: resolved.id,
+        played,
+      });
+      if (!played) console.warn('[audio-playback] failed to start selected track', { id: resolved.id, path: resolved.path });
+    });
+  });
 }
 
 export function initComposerAutoGrow(): void {
@@ -2816,6 +3110,7 @@ async function wireBiblioteca(): Promise<void> {
           musicalKey: track.key,
           energyHint01: track.energy ?? null,
         });
+        void shHydrateAndPlayTrackById(track.id, { title: track.title ?? null, artist: track.artist ?? null });
       });
       rowsWrap.appendChild(tr);
     }
@@ -2926,6 +3221,8 @@ async function wireBiblioteca(): Promise<void> {
   }
 }
 
+let shLastLiveNowPlayingTrackId: string | null = null;
+
 async function wireNowPlaying(): Promise<void> {
   if (typeof document === 'undefined') return;
   const live = api().live;
@@ -2955,6 +3252,13 @@ async function wireNowPlaying(): Promise<void> {
         bars.forEach((bar, idx) => {
           if (idx < playedUpTo) bar.classList.add('wv-played');
           else bar.classList.remove('wv-played');
+        });
+      }
+      if (np?.trackId && np.trackId !== shLastLiveNowPlayingTrackId) {
+        shLastLiveNowPlayingTrackId = np.trackId;
+        void shHydrateAndPlayTrackById(np.trackId, {
+          title: np.title ?? null,
+          artist: np.artist ?? null,
         });
       }
     });
@@ -3333,13 +3637,15 @@ async function wireRecommendationsView(): Promise<void> {
       const bpmTxt = row.querySelector<HTMLElement>('[data-rec-bpm]')?.textContent?.replace(/\D+/g, '') ?? '';
       const bpm = bpmTxt ? Number(bpmTxt) : null;
       const key = row.querySelector<HTMLElement>('[data-rec-key]')?.textContent.trim() ?? null;
+      const trackId = title.length ? `rec-${shHashCode(title + artist)}` : `rec-${Date.now()}`;
       void liveApi.pushManualTrack!({
-        trackId: title.length ? `rec-${shHashCode(title + artist)}` : `rec-${Date.now()}`,
+        trackId,
         title,
         artist,
         bpm: Number.isFinite(bpm) ? bpm : null,
         musicalKey: key,
       });
+      void shHydrateAndPlayTrackById(trackId, { title, artist });
     });
   });
 }
@@ -3535,6 +3841,10 @@ async function wireNewRecommendationsView(): Promise<void> {
           bpm: candidate.bpm,
           musicalKey: candidate.key,
           energyHint01: candidate.energy,
+        });
+        void shHydrateAndPlayTrackById(candidate.trackId, {
+          title: candidate.title ?? null,
+          artist: candidate.artist ?? null,
         });
       });
       tbody.appendChild(tr);

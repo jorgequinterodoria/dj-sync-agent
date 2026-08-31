@@ -198,7 +198,7 @@ function createMainWindow(): void {
         preload: preloadPath,
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true,
+        sandbox: false,
         autoplayPolicy: 'no-user-gesture-required',
       },
     });
