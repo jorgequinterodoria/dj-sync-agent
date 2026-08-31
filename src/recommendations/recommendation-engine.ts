@@ -90,6 +90,13 @@ function hardConstraintPass(
   const excluded = (constraints.excludedGenres ?? []).map((v) => v.trim().toLocaleLowerCase()).filter(Boolean);
   if (allowed.length && (!candidateGenre || !allowed.includes(candidateGenre))) return false;
   if (excluded.length && candidateGenre && excluded.includes(candidateGenre)) return false;
+  const candidateArtist = normalized(candidate.artist);
+  const excludedArtists = (constraints.excludedArtistNames ?? [])
+    .map((v) => normalized(v))
+    .filter(Boolean);
+  if (excludedArtists.length && candidateArtist && excludedArtists.includes(candidateArtist)) {
+    return false;
+  }
   return true;
 }
 

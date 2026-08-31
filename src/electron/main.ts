@@ -321,6 +321,11 @@ app.whenReady().then(
         applicationState,
         library,
         getAppInfo,
+        userDataDir: app.getPath('userData'),
+        getSenderWebContents() {
+          if (mainWindow === null || mainWindow.isDestroyed()) return null;
+          return mainWindow.webContents;
+        },
       });
     } catch (error: unknown) {
       console.error(

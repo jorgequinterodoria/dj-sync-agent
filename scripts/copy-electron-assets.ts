@@ -53,6 +53,42 @@ const assets: readonly Asset[] = [
     source:
       resolve(
         projectRoot,
+        'src/electron/renderer/app-widgets.css',
+      ),
+    destination:
+      resolve(
+        projectRoot,
+        'dist/electron/renderer/app-widgets.css',
+      ),
+  },
+  {
+    source:
+      resolve(
+        projectRoot,
+        'src/electron/renderer/app-charts.css',
+      ),
+    destination:
+      resolve(
+        projectRoot,
+        'dist/electron/renderer/app-charts.css',
+      ),
+  },
+  {
+    source:
+      resolve(
+        projectRoot,
+        'src/electron/renderer/copilot-chat.css',
+      ),
+    destination:
+      resolve(
+        projectRoot,
+        'dist/electron/renderer/copilot-chat.css',
+      ),
+  },
+  {
+    source:
+      resolve(
+        projectRoot,
         'src/electron/renderer/production-ui/production-ui.css',
       ),
     destination:

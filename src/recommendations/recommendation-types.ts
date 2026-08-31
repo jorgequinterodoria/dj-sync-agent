@@ -34,6 +34,7 @@ export interface RecommendationConstraints {
   maxBpmDelta?: number | null;
   allowedGenres?: string[];
   excludedGenres?: string[];
+  excludedArtistNames?: string[];
   minRating?: number | null;
   targetEnergy?: number | null;
   maxRepeatedArtists?: number;

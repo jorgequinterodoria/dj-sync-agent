@@ -67,6 +67,72 @@ export const IPC_CHANNELS = {
 
   settingsSave:
     'settings:save',
+
+  recommendRecommend:
+    'recommend:recommend',
+
+  recommendAnalyzeSet:
+    'recommend:analyze-set',
+
+  recommendSnapshot:
+    'recommend:snapshot',
+
+  setBuilderBuild:
+    'set-builder:build',
+
+  setBuilderAnalyze:
+    'set-builder:analyze',
+
+  historyListSessions:
+    'history:list-sessions',
+
+  historyGetSession:
+    'history:get-session',
+
+  historyGetSessionTracks:
+    'history:get-session-tracks',
+
+  preferencesListValues:
+    'preferences:list-values',
+
+  preferencesIsExcluded:
+    'preferences:is-excluded',
+
+  preferencesSaveExplicit:
+    'preferences:save-explicit',
+
+  preferencesRemoveExplicit:
+    'preferences:remove-explicit',
+
+  liveGetNow:
+    'live:get-now',
+
+  livePushManualTrack:
+    'live:push-manual-track',
+
+  liveTickElapsed:
+    'live:tick-elapsed',
+
+  liveRecommend:
+    'live:recommend',
+
+  liveSnapshot:
+    'live:snapshot',
+
+  liveUpdate:
+    'live:update',
+
+  playlistList:
+    'playlist:list',
+
+  playlistGet:
+    'playlist:get',
+
+  playlistGetTracks:
+    'playlist:get-tracks',
+
+  workspaceAggregateStats:
+    'workspace:aggregate-stats',
 } as const;
 
 export type IpcChannel =

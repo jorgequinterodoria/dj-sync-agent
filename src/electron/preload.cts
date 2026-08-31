@@ -74,6 +74,72 @@ const IPC_CHANNELS = {
 
   settingsSave:
     'settings:save',
+
+  recommendRecommend:
+    'recommend:recommend',
+
+  recommendAnalyzeSet:
+    'recommend:analyze-set',
+
+  recommendSnapshot:
+    'recommend:snapshot',
+
+  setBuilderBuild:
+    'set-builder:build',
+
+  setBuilderAnalyze:
+    'set-builder:analyze',
+
+  historyListSessions:
+    'history:list-sessions',
+
+  historyGetSession:
+    'history:get-session',
+
+  historyGetSessionTracks:
+    'history:get-session-tracks',
+
+  preferencesListValues:
+    'preferences:list-values',
+
+  preferencesIsExcluded:
+    'preferences:is-excluded',
+
+  preferencesSaveExplicit:
+    'preferences:save-explicit',
+
+  preferencesRemoveExplicit:
+    'preferences:remove-explicit',
+
+  liveGetNow:
+    'live:get-now',
+
+  livePushManualTrack:
+    'live:push-manual-track',
+
+  liveTickElapsed:
+    'live:tick-elapsed',
+
+  liveRecommend:
+    'live:recommend',
+
+  liveSnapshot:
+    'live:snapshot',
+
+  liveUpdate:
+    'live:update',
+
+  playlistList:
+    'playlist:list',
+
+  playlistGet:
+    'playlist:get',
+
+  playlistGetTracks:
+    'playlist:get-tracks',
+
+  workspaceAggregateStats:
+    'workspace:aggregate-stats',
 } as const;
 
 contextBridge.exposeInMainWorld(
@@ -302,6 +368,152 @@ contextBridge.exposeInMainWorld(
             IPC_CHANNELS.settingsSave,
             input,
           ),
+    },
+
+    recommend: {
+      recommend: (input: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.recommendRecommend,
+          input,
+        ),
+      analyzeSet: (input: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.recommendAnalyzeSet,
+          input,
+        ),
+      snapshot: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.recommendSnapshot,
+        ),
+    },
+
+    setBuilder: {
+      build: (input: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.setBuilderBuild,
+          input,
+        ),
+      analyze: (input: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.setBuilderAnalyze,
+          input,
+        ),
+    },
+
+    history: {
+      listSessions: (limit?: number) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.historyListSessions,
+          limit,
+        ),
+      getSession: (sessionId: string) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.historyGetSession,
+          sessionId,
+        ),
+      getSessionTracks: (sessionId: string) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.historyGetSessionTracks,
+          sessionId,
+        ),
+    },
+
+    preferences: {
+      listValues: (options?: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.preferencesListValues,
+          options,
+        ),
+      isExcluded: (input: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.preferencesIsExcluded,
+          input,
+        ),
+      saveExplicit: (input: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.preferencesSaveExplicit,
+          input,
+        ),
+      removeExplicit: (input: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.preferencesRemoveExplicit,
+          input,
+        ),
+    },
+
+    live: {
+      getNow: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.liveGetNow,
+        ),
+      pushManualTrack: (input: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.livePushManualTrack,
+          input,
+        ),
+      tickElapsed: (addMs: number) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.liveTickElapsed,
+          addMs,
+        ),
+      recommend: (input: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.liveRecommend,
+          input,
+        ),
+      snapshot: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.liveSnapshot,
+        ),
+      subscribe: (
+        listener: (
+          snapshot: unknown,
+        ) => void,
+      ) => {
+        const handler = (
+          _event: unknown,
+          snapshot: unknown,
+        ) => {
+          listener(
+            snapshot,
+          );
+        };
+        ipcRenderer.on(
+          IPC_CHANNELS.liveUpdate,
+          handler,
+        );
+        return () => {
+          ipcRenderer.removeListener(
+            IPC_CHANNELS.liveUpdate,
+            handler,
+          );
+        };
+      },
+    },
+
+    playlist: {
+      list: (args: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.playlistList,
+          args,
+        ),
+      get: (args: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.playlistGet,
+          args,
+        ),
+      getTracks: (args: unknown) =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.playlistGetTracks,
+          args,
+        ),
+    },
+
+    workspace: {
+      aggregateStats: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.workspaceAggregateStats,
+        ),
     },
   },
 );

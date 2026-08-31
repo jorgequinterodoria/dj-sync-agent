@@ -18,6 +18,7 @@ import {
   normalizeTrack,
   type NormalizedTrack,
 } from '../rekordbox/normalized-track.js';
+import type { DJPlaylist } from '../core/domain/dj-playlist.js';
 
 import type {
   loadConfig,
@@ -267,12 +268,31 @@ export interface RekordboxLibraryService {
       afterId?: string | null;
       limit?: number;
       search?: string;
+      readonly genres?: readonly string[] | string | null;
+      readonly bpmMin?: number | null;
+      readonly bpmMax?: number | null;
+      readonly keys?: readonly string[] | string | null;
     },
   ): Promise<LibraryPage>;
 
   getById(
     trackId: string,
   ): Promise<NormalizedTrack>;
+
+  listPlaylists(
+    args?: {
+      readonly search?: string;
+      readonly limit?: number;
+    },
+  ): Promise<DJPlaylist[]>;
+
+  getPlaylist(
+    id: string,
+  ): Promise<DJPlaylist | null>;
+
+  getPlaylistTrackIds(
+    id: string,
+  ): Promise<readonly string[]>;
 
   close(): Promise<void>;
 }
@@ -406,20 +426,97 @@ export function createRekordboxLibraryService(
             ),
         );
 
+      const genresNormalized: string[] | null = (() => {
+        const g = options.genres;
+        if (!g) return null;
+        const arr = typeof g === 'string' ? [g] : [...g];
+        const cleaned = arr
+          .map((x) => x?.toString().trim())
+          .filter((x): x is string => Boolean(x));
+        return cleaned.length ? cleaned : null;
+      })();
+
+      const keysNormalized: string[] | null = (() => {
+        const k = options.keys;
+        if (!k) return null;
+        const arr = typeof k === 'string' ? [k] : [...k];
+        const cleaned = arr
+          .map((x) => x?.toString().trim())
+          .filter((x): x is string => Boolean(x));
+        return cleaned.length ? cleaned : null;
+      })();
+
+      const bpmMin =
+        typeof options.bpmMin === 'number' && Number.isFinite(options.bpmMin)
+          ? options.bpmMin
+          : null;
+      const bpmMax =
+        typeof options.bpmMax === 'number' && Number.isFinite(options.bpmMax)
+          ? options.bpmMax
+          : null;
+
+      const hasAdvancedFilters =
+        genresNormalized !== null ||
+        keysNormalized !== null ||
+        bpmMin !== null ||
+        bpmMax !== null;
+
+      const filteredTracks = hasAdvancedFilters
+        ? tracks.filter((t) => {
+            if (genresNormalized) {
+              const g = (t.metadata?.genre ?? '').trim();
+              if (!g) return false;
+              const match = genresNormalized.some(
+                (want) =>
+                  g.localeCompare(want, undefined, { sensitivity: 'base' }) ===
+                    0 ||
+                  g.toLowerCase().includes(want.toLowerCase()),
+              );
+              if (!match) return false;
+            }
+            if (keysNormalized) {
+              const k = (t.metadata?.key ?? '').trim();
+              if (!k) return false;
+              const match = keysNormalized.some(
+                (want) =>
+                  k.localeCompare(want, undefined, { sensitivity: 'base' }) ===
+                    0 ||
+                  k.toLowerCase().includes(want.toLowerCase()),
+              );
+              if (!match) return false;
+            }
+            const bpm: number | null =
+              typeof t.technical?.bpm === 'number' ? t.technical.bpm : null;
+            if (bpmMin !== null && bpm !== null) {
+              if (bpm < bpmMin) return false;
+            }
+            if (bpmMax !== null && bpm !== null) {
+              if (bpm > bpmMax) return false;
+            }
+            if (bpmMin !== null && bpm === null) return false;
+            if (bpmMax !== null && bpm === null) return false;
+            return true;
+          })
+        : tracks;
+
       const items =
-        tracks.map(
+        filteredTracks.map(
           toSummary,
         );
 
+      const displayTotal = hasAdvancedFilters
+        ? filteredTracks.length
+        : total;
+
       const nextAfterId =
-        items.length === limit
+        items.length === limit && !hasAdvancedFilters
           ? items.at(-1)?.id ??
             null
           : null;
 
       return {
         items,
-        total,
+        total: displayTotal,
         nextAfterId,
         hasMore:
           nextAfterId !==
@@ -485,7 +582,126 @@ export function createRekordboxLibraryService(
         current,
       );
     },
+
+    async listPlaylists(args?: {
+      readonly search?: string;
+      readonly limit?: number;
+    }): Promise<DJPlaylist[]> {
+      const database =
+        await ensureDatabase();
+      const cap =
+        Math.max(1, Math.min(2000, Number(args?.limit ?? 500)));
+      const all =
+        await extractPlaylistsFromRekordbox(
+          database,
+          cap,
+        );
+      const q =
+        normalizeSearch(args?.search).toLocaleLowerCase();
+      if (!q) return all;
+      return all.filter((p) =>
+        p.name.toLocaleLowerCase().includes(q),
+      );
+    },
+
+    async getPlaylist(
+      id: string,
+    ): Promise<DJPlaylist | null> {
+      const normalizedId =
+        id.trim();
+      if (!normalizedId) return null;
+      const database =
+        await ensureDatabase();
+      const all =
+        await extractPlaylistsFromRekordbox(
+          database,
+          2000,
+        );
+      return (
+        all.find((p) => p.id === normalizedId) ??
+        null
+      );
+    },
+
+    async getPlaylistTrackIds(
+      id: string,
+    ): Promise<readonly string[]> {
+      const playlist =
+        await this.getPlaylist(id);
+      return playlist?.trackIds ?? [];
+    },
   };
+}
+
+interface PlaylistRow {
+  ID: string;
+  Name: string | null;
+  ParentID: string | null;
+  UpdateDate: string | null;
+}
+
+interface PlaylistContentRow {
+  PlaylistID: string;
+  ContentID: string;
+  Seq: number | null;
+}
+
+export async function extractPlaylistsFromRekordbox(
+  db: SqliteDatabase,
+  limit = 500,
+): Promise<DJPlaylist[]> {
+  const playlistRows =
+    await all<PlaylistRow>(
+      db,
+      `SELECT
+        p.ID as ID,
+        p.Name as Name,
+        p.ParentID as ParentID,
+        p.UpdateDate as UpdateDate
+       FROM djmdPlaylist p
+       WHERE COALESCE(p.rb_local_deleted, 0) = 0
+       ORDER BY COALESCE(p.Seq, 0) ASC, p.Name ASC
+       LIMIT ?`,
+      [Math.max(1, Math.min(2000, Number(limit) || 500))],
+    );
+
+  const playlistIds =
+    playlistRows.map((row) => row.ID);
+
+  const contentRows: PlaylistContentRow[] =
+    playlistIds.length === 0
+      ? []
+      : await all<PlaylistContentRow>(
+          db,
+          `SELECT sp.PlaylistID as PlaylistID, sp.ContentID as ContentID, sp.Seq as Seq
+           FROM djmdSongPlaylist sp
+           WHERE sp.PlaylistID IN (${playlistIds.map(() => '?').join(',')})
+             AND COALESCE(sp.rb_local_deleted, 0) = 0
+           ORDER BY sp.PlaylistID, COALESCE(sp.Seq, 0) ASC`,
+          playlistIds,
+        );
+
+  const byId =
+    new Map<string, string[]>();
+
+  for (const row of contentRows) {
+    const list =
+      byId.get(row.PlaylistID) ?? [];
+    list.push(row.ContentID);
+    byId.set(row.PlaylistID, list);
+  }
+
+  return playlistRows.map((row) => {
+    const trackIds = byId.get(row.ID) ?? [];
+    return {
+      id: row.ID,
+      name: row.Name?.toString() ?? '',
+      trackIds,
+      parentId: row.ParentID?.toString() ?? null,
+      source: 'rekordbox' as const,
+      updatedAt: row.UpdateDate?.toString() ?? null,
+    };
+  });
 }
 
 export {

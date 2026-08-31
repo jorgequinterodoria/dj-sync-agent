@@ -102,6 +102,22 @@ export const UserSettingsSchema =
         .trim()
         .optional(),
 
+    copilotMaxTokens:
+      z
+        .number()
+        .int()
+        .min(256)
+        .max(32768)
+        .optional(),
+
+    npIntervalMs:
+      z
+        .number()
+        .int()
+        .min(150)
+        .max(10000)
+        .optional(),
+
     intelligenceJobsApiUrl:
       z
         .string()

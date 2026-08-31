@@ -25,11 +25,7 @@ const rootElement =
     '#production-ui-root',
   );
 
-if (!rootElement) {
-  throw new Error(
-    'Production UI root element was not found.',
-  );
-}
+if (rootElement) {
 
 const root: HTMLElement =
   rootElement;
@@ -182,6 +178,10 @@ const DRAFT_SETTINGS_DEFAULTS:
       '',
     copilotModel:
       '',
+    copilotMaxTokens:
+      2048,
+    npIntervalMs:
+      500,
     intelligenceJobsApiUrl:
       '',
     logLevel:
@@ -1440,6 +1440,34 @@ function syncDraftFromInputs():
         read(
           'setting-intelligence-api-url',
         ),
+      copilotMaxTokens:
+        (() => {
+          const raw =
+            Number(
+              read(
+                'setting-copilot-max-tokens',
+              ),
+            );
+          return Number.isFinite(raw) &&
+            raw >= 256 &&
+            raw <= 32768
+            ? Math.round(raw)
+            : 2048;
+        })(),
+      npIntervalMs:
+        (() => {
+          const raw =
+            Number(
+              read(
+                'setting-np-interval-ms',
+              ),
+            );
+          return Number.isFinite(raw) &&
+            raw >= 150 &&
+            raw <= 10000
+            ? Math.round(raw)
+            : 500;
+        })(),
       logLevel:
         (read(
           'setting-log-level',
@@ -2217,3 +2245,130 @@ async function refreshCopilotStatus(): Promise<void> {
 void refreshCopilotStatus();
 void refreshPendingAction();
 void refresh();
+
+}
+
+const NEW_NAV_VIEW_IDS = [
+  'view-inicio',
+  'view-biblioteca',
+  'view-recomendaciones',
+  'view-sets',
+  'view-analisis',
+  'view-historial',
+  'view-copilot',
+  'view-ajustes',
+] as const;
+
+type NewNavViewId = (typeof NEW_NAV_VIEW_IDS)[number];
+
+export function bindNewSidebarNav(): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const navItems = Array.from(
+    document.querySelectorAll<HTMLButtonElement>(
+      '.nav-item[data-nav-view]',
+    ),
+  );
+
+  if (navItems.length === 0) {
+    return;
+  }
+
+  const views = new Map<NewNavViewId, HTMLElement>();
+  for (const id of NEW_NAV_VIEW_IDS) {
+    const el = document.getElementById(id);
+    if (el) {
+      views.set(id, el);
+    }
+  }
+
+  const mainPanel =
+    document.getElementById('main-panel') ??
+    document.querySelector<HTMLElement>('.main-panel');
+
+  function activateView(targetId: NewNavViewId): void {
+    if (!views.has(targetId)) {
+      return;
+    }
+
+    navItems.forEach((btn) => {
+      const isActive = btn.dataset.navView === targetId;
+      btn.classList.toggle('nav-active', isActive);
+      btn.setAttribute(
+        'aria-selected',
+        isActive ? 'true' : 'false',
+      );
+    });
+
+    views.forEach((el) => {
+      el.classList.remove('view-active');
+    });
+    views.get(targetId)!.classList.add('view-active');
+
+    if (mainPanel) {
+      mainPanel.classList.toggle(
+        'has-copilot',
+        targetId === 'view-inicio',
+      );
+    }
+
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      // no-op
+    }
+  }
+
+  navItems.forEach((btn) => {
+    btn.addEventListener(
+      'click',
+      (event) => {
+        const targetId = btn.dataset
+          .navView as NewNavViewId | undefined;
+        if (!targetId) {
+          return;
+        }
+        event.preventDefault();
+        activateView(targetId);
+      },
+      true,
+    );
+  });
+
+  const firstActive = navItems.find((btn) =>
+    btn.classList.contains('nav-active'),
+  );
+  if (firstActive?.dataset.navView) {
+    return;
+  }
+
+  const defaultId: NewNavViewId = 'view-inicio';
+  const defaultBtn = navItems.find(
+    (btn) => btn.dataset.navView === defaultId,
+  );
+  if (defaultBtn) {
+    defaultBtn.classList.add('nav-active');
+    defaultBtn.setAttribute('aria-selected', 'true');
+  }
+  if (views.has(defaultId)) {
+    views.get(defaultId)!.classList.add('view-active');
+    mainPanel?.classList.add('has-copilot');
+  }
+}
+
+if (typeof document !== 'undefined') {
+  if (
+    document.readyState === 'complete' ||
+    document.readyState === 'interactive'
+  ) {
+    bindNewSidebarNav();
+  } else {
+    document.addEventListener(
+      'DOMContentLoaded',
+      bindNewSidebarNav,
+      { once: true },
+    );
+  }
+}

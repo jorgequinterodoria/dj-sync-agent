@@ -1,350 +1,711 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DJ Copilot — Your Library. Your Sound. Your Next Move.</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="app-widgets.css" />
+  <link rel="stylesheet" href="app-charts.css" />
+  <link rel="stylesheet" href="copilot-chat.css" />
+  <link rel="stylesheet" href="production-ui/production-ui.css" />
+</head>
+<body>
+  <div class="app-shell" id="app-shell">
 
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
+    <aside class="app-sidebar" id="app-sidebar" aria-label="Navegación principal">
+      <div class="brand">
+        <div class="brand-logo" aria-hidden="true">♫</div>
+        <div class="brand-title">
+          <strong>DJ COPILOT</strong>
+          <span>Your Library. Your Sound. Your Next Move.</span>
+        </div>
+      </div>
 
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="
-        default-src 'self';
-        style-src 'self';
-        script-src 'self';
-        connect-src 'none';
-        img-src 'self' data:;
-        font-src 'self';
-        object-src 'none';
-        base-uri 'none';
-      "
-    />
+      <ul class="nav-list" role="list">
+        <div class="nav-label">Workspace</div>
+        <li><button type="button" class="nav-item nav-active" data-nav-view="view-inicio" role="tab" aria-selected="true">
+          <span class="nav-icon" aria-hidden="true">🏠</span><span>Inicio</span>
+        </button></li>
+        <li><button type="button" class="nav-item" data-nav-view="view-biblioteca" role="tab">
+          <span class="nav-icon" aria-hidden="true">📚</span><span>Biblioteca</span>
+        </button></li>
+        <li><button type="button" class="nav-item" data-nav-view="view-recomendaciones" role="tab">
+          <span class="nav-icon" aria-hidden="true">⭐</span><span>Recomendaciones</span>
+        </button></li>
+        <li><button type="button" class="nav-item" data-nav-view="view-sets" role="tab">
+          <span class="nav-icon" aria-hidden="true">📋</span><span>Sets</span>
+        </button></li>
 
-    <title>DJ Sync Agent</title>
+        <div class="nav-label">Analítica</div>
+        <li><button type="button" class="nav-item" data-nav-view="view-analisis" role="tab">
+          <span class="nav-icon" aria-hidden="true">📊</span><span>Análisis</span>
+        </button></li>
+        <li><button type="button" class="nav-item" data-nav-view="view-historial" role="tab">
+          <span class="nav-icon" aria-hidden="true">⏱️</span><span>Historial</span>
+        </button></li>
 
-    <link
-      rel="stylesheet"
-      href="./styles.css"
-    />
-  </head>
+        <div class="nav-label">Asistente</div>
+        <li><button type="button" class="nav-item" data-nav-view="view-copilot" role="tab">
+          <span class="nav-icon" aria-hidden="true">🤖</span><span>Copilot</span>
+        </button></li>
+        <li><button type="button" class="nav-item" data-nav-view="view-ajustes" role="tab">
+          <span class="nav-icon" aria-hidden="true">⚙️</span><span>Ajustes</span>
+        </button></li>
+      </ul>
 
-  <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <div class="brand">
-          <div class="brand-mark">
-            DJ
+      <div class="sidebar-features" aria-hidden="false">
+        <div class="feature"><span class="feature-icon">🎧</span><span>Análisis profundo de tu biblioteca</span></div>
+        <div class="feature"><span class="feature-icon">💡</span><span>Recomendaciones inteligentes</span></div>
+        <div class="feature"><span class="feature-icon">🎼</span><span>Construcción de sets sin esfuerzo</span></div>
+        <div class="feature"><span class="feature-icon">🌊</span><span>Aprende de tu estilo</span></div>
+        <div class="sidebar-tagline">Tu música ya tiene el potencial.<br/><strong>Ahora dale un copiloto.</strong></div>
+      </div>
+    </aside>
+
+    <div class="main-panel has-copilot" id="main-panel">
+
+      <main class="app-content" id="app-content">
+
+        <!-- ===================================================================== -->
+        <!-- VISTA 1 · INICIO / DASHBOARD                                          -->
+        <!-- ===================================================================== -->
+        <section class="view-wrapper view-active" id="view-inicio" aria-labelledby="inicio-title">
+          <div class="topbar">
+            <div class="topbar-status" title="Sincronización">
+              <span class="dot" aria-hidden="true"></span><span>Sincronizado</span>
+            </div>
+            <button class="np-btn" title="Modo oscuro" aria-label="Alternar modo">🌙</button>
+            <div class="avatar" title="Jorge Quintero">JQ</div>
           </div>
 
-          <div>
-            <h1>DJ Sync Agent</h1>
-
-            <p>
-              Centro de control de sincronización local
-            </p>
+          <div class="welcome-row">
+            <div>
+              <h1>Buenas noches, <span>Jorge</span> 👋</h1>
+              <p>Listo para crear algo increíble hoy.</p>
+            </div>
           </div>
-        </div>
 
-        <div class="topbar-actions">
-          <span
-            id="connection-pill"
-            class="connection-pill connection-pending"
-          >
-            <span class="status-dot"></span>
-            <span id="connection-status">
-              Conectando...
-            </span>
-          </span>
+          <div class="stats-grid-4" role="list">
+            <div class="stat-card" role="listitem">
+              <div class="stat-icon ic-tracks" aria-hidden="true">◔</div>
+              <div class="stat-meta"><span class="label">Tracks</span><span class="value">8,742</span></div>
+            </div>
+            <div class="stat-card" role="listitem">
+              <div class="stat-icon ic-playlists" aria-hidden="true">⏹</div>
+              <div class="stat-meta"><span class="label">Playlists</span><span class="value">215</span></div>
+            </div>
+            <div class="stat-card" role="listitem">
+              <div class="stat-icon ic-sets" aria-hidden="true">⏺</div>
+              <div class="stat-meta"><span class="label">Sets</span><span class="value">47</span></div>
+            </div>
+            <div class="stat-card" role="listitem">
+              <div class="stat-icon ic-hours" aria-hidden="true">⏻</div>
+              <div class="stat-meta"><span class="label">Horas analizadas</span><span class="value">1,246</span></div>
+            </div>
+          </div>
 
-          <button
-            id="refresh-service"
-            class="icon-button"
-            type="button"
-            aria-label="Refresh application state"
-          >
-            ↻
-          </button>
-        </div>
-      </header>
+          <div class="section">
+            <div class="section-header">
+              <div>
+                <h3>Recomendaciones para ti</h3>
+                <p>Basadas en tu historial reciente y estilo</p>
+              </div>
+              <button class="btn-ghost">Ver todas →</button>
+            </div>
+            <div class="recs-grid" id="home-recs-grid">
+              <div class="rec-card">
+                <div class="rec-cover">
+                  <div class="rec-cover-inner bg-boost">⚡</div>
+                  <div class="rec-overlay"><span class="bpm-key">128 BPM · 8A</span></div>
+                </div>
+                <div class="rec-body"><h4>Energy Boost</h4><p>Perfecto para subir la energía</p></div>
+              </div>
+              <div class="rec-card">
+                <div class="rec-cover">
+                  <div class="rec-cover-inner bg-deep">🌌</div>
+                  <div class="rec-overlay"><span class="bpm-key">124 BPM · 7A</span></div>
+                </div>
+                <div class="rec-body"><h4>Deep Progression</h4><p>Ideal para transiciones suaves</p></div>
+              </div>
+              <div class="rec-card">
+                <div class="rec-cover">
+                  <div class="rec-cover-inner bg-vocal">🎤</div>
+                  <div class="rec-overlay"><span class="bpm-key">126 BPM · 9A</span></div>
+                </div>
+                <div class="rec-body"><h4>Vocal Moment</h4><p>Vocales que conectan</p></div>
+              </div>
+              <div class="rec-card">
+                <div class="rec-cover">
+                  <div class="rec-cover-inner bg-peak">🔥</div>
+                  <div class="rec-overlay"><span class="bpm-key">130 BPM · 10A</span></div>
+                </div>
+                <div class="rec-body"><h4>Peak Time</h4><p>Para momentos álgidos</p></div>
+              </div>
+              <div class="rec-card">
+                <div class="rec-cover">
+                  <div class="rec-cover-inner bg-after">🌆</div>
+                  <div class="rec-overlay"><span class="bpm-key">118 BPM · 5A</span></div>
+                </div>
+                <div class="rec-body"><h4>After Hours</h4><p>Sonidos más profundos</p></div>
+              </div>
+            </div>
+          </div>
 
-      <nav
-        class="main-nav"
-        aria-label="Main navigation"
-      >
-        <button
-          id="nav-dashboard"
-          class="nav-button nav-active"
-          type="button"
-          data-view="dashboard"
-        >
-          Dashboard
-        </button>
-
-        <button
-          id="nav-library"
-          class="nav-button"
-          type="button"
-          data-view="library"
-        >
-          Biblioteca
-        </button>
-
-        <button
-          id="nav-audio"
-          class="nav-button"
-          type="button"
-          data-view="audio"
-        >
-          Audio
-        </button>
-
-        <button
-          id="nav-settings"
-          class="nav-button"
-          type="button"
-          data-view="settings"
-        >
-          Ajustes
-        </button>
-      </nav>
-
-      <main class="dashboard">
-        <section
-          id="view-dashboard"
-          class="view-section production-workspace-view"
-          aria-labelledby="production-workspace-title"
-        >
-          <h2 id="production-workspace-title" class="ds-sr-only">DJ Sync Production Workspace</h2>
-          <div id="production-ui-root"></div>
+          <div class="section">
+            <div class="section-header">
+              <div>
+                <h3>Resumen de tu última sesión</h3>
+                <p>Sunset Session · 2024-06-04</p>
+              </div>
+              <button class="btn-ghost">Ver análisis completo →</button>
+            </div>
+            <div class="session-summary-grid">
+              <div class="summary-cell"><span class="eyebrow">Duración</span><div class="value">2h <small>13m</small></div></div>
+              <div class="summary-cell"><span class="eyebrow">Tracks</span><div class="value">28</div></div>
+              <div class="summary-cell"><span class="eyebrow">BPM Promedio</span><div class="value">126.4</div></div>
+              <div class="summary-cell"><span class="eyebrow">Energía Promedio</span><div class="value">7.2 <small>/ 10</small></div></div>
+              <div class="summary-cell"><span class="eyebrow">Armonía</span><div class="value"><span class="pill-key">8A</span> Camelot</div></div>
+              <div class="summary-cell"><span class="eyebrow">Flujo</span><div class="value">8.1 <small>/ 10</small></div></div>
+            </div>
+          </div>
         </section>
 
-        <section
-          id="view-library"
-          class="view-section view-hidden"
-          aria-labelledby="library-heading"
-        >
-          <section class="library-toolbar">
-            <div>
-              <div class="eyebrow">
-                REKORDBOX
-              </div>
-
-              <h2 id="library-heading">
-                Library
-              </h2>
-
-              <p
-                id="library-summary"
-                class="panel-subtitle"
-              >
-                Loading tracks...
-              </p>
+        <!-- ===================================================================== -->
+        <!-- VISTA 2 · BIBLIOTECA                                                  -->
+        <!-- ===================================================================== -->
+        <section class="view-wrapper" id="view-biblioteca" aria-labelledby="bib-title">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <h2 id="bib-title">Biblioteca</h2>
+              <span class="count" id="biblioteca-count">0 tracks</span>
             </div>
-
-            <div class="library-search">
-              <input
-                id="library-search"
-                type="search"
-                autocomplete="off"
-                placeholder="Search tracks..."
-                aria-label="Search tracks"
-              />
-
-              <button
-                id="library-search-clear"
-                class="button button-secondary"
-                type="button"
-              >
-                Clear
-              </button>
+            <div class="toolbar-right">
+              <select class="select-chip" aria-label="Filtrar género">
+                <option>Todos los géneros</option>
+                <option>Melodic House</option>
+                <option>Progressive House</option>
+                <option>Deep House</option>
+                <option>Techno</option>
+              </select>
+              <select class="select-chip" aria-label="Filtrar BPM"><option>BPM</option><option>115-122</option><option>123-128</option><option>129+</option></select>
+              <select class="select-chip" aria-label="Filtrar Key"><option>Key</option><option>8A</option><option>9A</option><option>7A</option></select>
+              <input id="biblioteca-search" class="input-search" type="search" placeholder="Buscar tracks, artistas, álbumes..." aria-label="Buscar en biblioteca" />
             </div>
-          </section>
-
-          <section class="library-layout">
-            <article class="panel library-panel">
-              <div
-                id="library-error"
-                class="inline-error"
-              ></div>
-
-              <div
-                id="library-loading"
-                class="library-loading"
-              >
-                Loading library...
-              </div>
-
-              <div
-                id="library-empty"
-                class="library-empty view-hidden"
-              >
-                No tracks found.
-              </div>
-
-              <div class="table-wrap">
-                <table class="track-table">
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Artist</th>
-                      <th>Album</th>
-                      <th>BPM</th>
-                      <th>Key</th>
-                      <th>Length</th>
-                      <th>Rating</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-
-                  <tbody
-                    id="library-table-body"
-                  ></tbody>
-                </table>
-              </div>
-
-              <div class="library-footer">
-                <span
-                  id="library-page-status"
-                >
-                  —
-                </span>
-
-                <button
-                  id="library-load-more"
-                  class="button button-secondary"
-                  type="button"
-                >
-                  Load more
-                </button>
-              </div>
-            </article>
-
-            <aside
-              id="library-detail"
-              class="panel track-detail-panel"
-            >
-              <div class="empty-state">
-                Select a track to view details.
-              </div>
-            </aside>
-          </section>
+          </div>
+          <div style="padding: 0 var(--content-px); max-width: 100%; overflow-x: auto;">
+            <table class="dense-table" aria-label="Tabla de biblioteca musical">
+              <thead>
+                <tr>
+                  <th style="width:40px;"></th>
+                  <th>Track</th>
+                  <th>Artista</th>
+                  <th style="width:70px;">BPM</th>
+                  <th style="width:70px;">Key</th>
+                  <th>Género</th>
+                  <th style="width:90px;">Rating</th>
+                  <th style="width:90px;">Forma</th>
+                </tr>
+              </thead>
+              <tbody id="biblioteca-tbody">
+              </tbody>
+            </table>
+          </div>
         </section>
 
-        <section
-          id="view-audio"
-          class="view-section view-hidden"
-          aria-labelledby="audio-heading"
-          data-managed-by="audio-controller"
-        >
-          <section class="library-toolbar">
-            <div>
-              <div class="eyebrow">
-                AUDIO ANALYSIS
-              </div>
-
-              <h2 id="audio-heading">
-                Audio Analysis Workspace
-              </h2>
-
-              <p class="panel-subtitle">
-                Batch and per-track analysis utilities. Loading the audio
-                environment…
-              </p>
+        <!-- ===================================================================== -->
+        <!-- VISTA 3 · RECOMENDACIONES                                             -->
+        <!-- ===================================================================== -->
+        <section class="view-wrapper" id="view-recomendaciones">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <h2>Recomendaciones</h2>
+              <span class="count">Personalizadas según tu estilo</span>
             </div>
-          </section>
+            <div class="toolbar-right">
+              <select class="select-chip"><option>Contexto actual</option><option>Set futuro</option><option>Warm-up</option><option>Peak time</option><option>After hours</option></select>
+              <select class="select-chip"><option>Todos los géneros</option></select>
+            </div>
+          </div>
+          <div class="section-hero" style="padding: 24px var(--content-px) 6px;">
+            <h1>Te recomendamos esto ahora 🎧</h1>
+            <p>Estas sugerencias priorizan tu huella musical: BPM, energía, tonalidad Camelot y tu historial de transiciones exitosas.</p>
+          </div>
+          <div style="padding: 6px var(--content-px) 28px;">
+            <div class="section">
+              <div class="section-header">
+                <div><h3>Top 10 recomendadas</h3><p>Actualizadas hace 12 minutos</p></div>
+                <button class="btn-primary">Añadir a cola</button>
+              </div>
+              <table class="dense-table" aria-label="Recomendaciones top">
+                <thead><tr><th>#</th><th>Track</th><th>Artista</th><th>BPM</th><th>Key</th><th>Match</th><th>Energía</th></tr></thead>
+                <tbody>
+                  <tr><td>1</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#22d3ee,#155e75);">IS</span><span class="track-mini-name">Into Space</span></div></td><td>Parra for Cuva</td><td style="font-family:var(--font-mono);">118</td><td><span class="pill-key">8A</span></td><td style="color: var(--accent-green); font-weight:600;">96%</td><td><span class="wave-bar wb-energy-low"><i style="height:25%"></i><i style="height:35%"></i><i style="height:20%"></i><i style="height:42%"></i><i style="height:30%"></i><i style="height:40%"></i></span></td></tr>
+                  <tr><td>2</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#a855f7,#312e81);">EL</span><span class="track-mini-name">Elements</span></div></td><td>Monolink</td><td style="font-family:var(--font-mono);">120</td><td><span class="pill-key">8A</span></td><td style="color: var(--accent-green); font-weight:600;">94%</td><td><span class="wave-bar wb-energy-mid"><i style="height:35%"></i><i style="height:55%"></i><i style="height:42%"></i><i style="height:60%"></i><i style="height:50%"></i><i style="height:65%"></i></span></td></tr>
+                  <tr><td>3</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#facc15,#78350f);">NL</span><span class="track-mini-name">Northern Lights</span></div></td><td>Yotto</td><td style="font-family:var(--font-mono);">123</td><td><span class="pill-key">9A</span></td><td style="color: var(--accent-green); font-weight:600;">92%</td><td><span class="wave-bar wb-energy-mid"><i style="height:48%"></i><i style="height:65%"></i><i style="height:55%"></i><i style="height:72%"></i><i style="height:58%"></i><i style="height:70%"></i></span></td></tr>
+                  <tr><td>4</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#f97316,#7c2d12);">AD2</span><span class="track-mini-name">Another Dawn</span></div></td><td>Adana Twins</td><td style="font-family:var(--font-mono);">122</td><td><span class="pill-key">8A</span></td><td style="color: var(--accent-green); font-weight:600;">90%</td><td><span class="wave-bar wb-energy-mid"><i style="height:55%"></i><i style="height:72%"></i><i style="height:60%"></i><i style="height:78%"></i><i style="height:65%"></i><i style="height:74%"></i></span></td></tr>
+                  <tr><td>5</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#ef4444,#7f1d1d);">TS2</span><span class="track-mini-name">The Sound of You</span></div></td><td>ARTBAT</td><td style="font-family:var(--font-mono);">124</td><td><span class="pill-key">9A</span></td><td style="color: var(--accent-yellow); font-weight:600;">88%</td><td><span class="wave-bar wb-energy-high"><i style="height:65%"></i><i style="height:80%"></i><i style="height:70%"></i><i style="height:85%"></i><i style="height:72%"></i><i style="height:82%"></i></span></td></tr>
+                  <tr><td>6</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#38bdf8,#075985);">YG2</span><span class="track-mini-name">You Got</span></div></td><td>Vintage Culture</td><td style="font-family:var(--font-mono);">126</td><td><span class="pill-key">10A</span></td><td style="color: var(--accent-yellow); font-weight:600;">86%</td><td><span class="wave-bar wb-energy-high"><i style="height:72%"></i><i style="height:85%"></i><i style="height:76%"></i><i style="height:90%"></i><i style="height:80%"></i><i style="height:88%"></i></span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
-        <section
-          id="view-settings"
-          class="view-section view-hidden"
-          aria-labelledby="settings-heading"
-        >
-          <section class="library-toolbar">
-            <div>
-              <div class="eyebrow">
-                APPLICATION
+        <!-- ===================================================================== -->
+        <!-- VISTA 4 · SETS (BUILDER)                                             -->
+        <!-- ===================================================================== -->
+        <section class="view-wrapper" id="view-sets">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <h2 id="sets-title">Constructor de Sets</h2>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn-primary" style="box-shadow: var(--shadow-glow-purple);">💾 Guardar Set</button>
+            </div>
+          </div>
+
+          <div class="section" style="margin: 24px var(--content-px);">
+            <div class="builder-inputs-row">
+              <div class="field">
+                <label>Género</label>
+                <select><option>Progressive House</option><option>Melodic House</option><option>Deep House</option><option>Techno</option></select>
               </div>
+              <div class="field">
+                <label>Duración</label>
+                <select><option>2 horas</option><option>1.5 horas</option><option>3 horas</option></select>
+              </div>
+              <div class="field">
+                <label>Energía Inicio</label>
+                <div class="energy-range" aria-label="Energía inicio 3/10">
+                  <span class="er-label">1</span>
+                  <div class="energy-bar-track">
+                    <div class="energy-bar-knob" style="left: 30%;"></div>
+                  </div>
+                  <span class="er-label">10</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>Energía Final</label>
+                <div class="energy-range" aria-label="Energía final 9/10">
+                  <span class="er-label">1</span>
+                  <div class="energy-bar-track">
+                    <div class="energy-bar-knob" style="left: 90%;"></div>
+                  </div>
+                  <span class="er-label">10</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>Key Inicial</label>
+                <select><option>8A Camelot</option><option>7A Camelot</option><option>9A Camelot</option></select>
+              </div>
+              <div class="field" style="align-items: stretch;">
+                <label>&nbsp;</label>
+                <button class="btn-primary" style="justify-content: center;">✨ Generar Set</button>
+              </div>
+            </div>
+          </div>
 
-              <h2 id="settings-heading">
-                Settings
-              </h2>
+          <div style="padding: 0 var(--content-px) 28px;">
+            <div class="section">
+              <div class="set-meta-summary">
+                <div class="meta">✨ Set generado: <strong>22 tracks</strong> · <strong>2h 01m</strong></div>
+                <div class="set-actions" style="width: auto;">
+                  <button class="btn-ghost">⇪ Exportar</button>
+                </div>
+              </div>
+              <table class="set-table" aria-label="Set generado">
+                <thead>
+                  <tr>
+                    <th style="width:36px;">#</th>
+                    <th>Track</th>
+                    <th style="width:110px;">BPM</th>
+                    <th style="width:70px;">Key</th>
+                    <th style="width:150px;">Energía</th>
+                    <th style="width:110px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="set-builder-tbody">
+                  <tr>
+                    <td><div class="set-row-left"><span class="set-rank">1</span><span class="set-cover" style="background: linear-gradient(135deg,#22d3ee,#155e75);">IS</span></div></td>
+                    <td><div class="set-info"><span class="t">Into Space</span><span class="a">Parra for Cuva</span></div></td>
+                    <td style="font-family:var(--font-mono); color:var(--text-300);">118</td>
+                    <td><span class="pill-key">8A</span></td>
+                    <td><div class="set-energy"><div class="set-energy-bar"><div class="set-energy-fill e-low" style="width:30%"></div></div></div></td>
+                    <td><div class="set-actions"><button class="set-btn" title="Regenerar">↻</button><button class="set-btn" title="Bloquear">🔒</button><button class="set-btn" title="Más opciones">⋯</button></div></td>
+                  </tr>
+                  <tr>
+                    <td><div class="set-row-left"><span class="set-rank">2</span><span class="set-cover" style="background: linear-gradient(135deg,#a855f7,#312e81);">EL</span></div></td>
+                    <td><div class="set-info"><span class="t">Elements</span><span class="a">Monolink</span></div></td>
+                    <td style="font-family:var(--font-mono); color:var(--text-300);">120</td>
+                    <td><span class="pill-key">8A</span></td>
+                    <td><div class="set-energy"><div class="set-energy-bar"><div class="set-energy-fill e-low" style="width:36%"></div></div></div></td>
+                    <td><div class="set-actions"><button class="set-btn">↻</button><button class="set-btn">🔒</button><button class="set-btn">⋯</button></div></td>
+                  </tr>
+                  <tr>
+                    <td><div class="set-row-left"><span class="set-rank">3</span><span class="set-cover" style="background: linear-gradient(135deg,#facc15,#78350f);">NL</span></div></td>
+                    <td><div class="set-info"><span class="t">Northern Lights</span><span class="a">Yotto</span></div></td>
+                    <td style="font-family:var(--font-mono); color:var(--text-300);">123</td>
+                    <td><span class="pill-key">9A</span></td>
+                    <td><div class="set-energy"><div class="set-energy-bar"><div class="set-energy-fill e-mid" style="width:48%"></div></div></div></td>
+                    <td><div class="set-actions"><button class="set-btn">↻</button><button class="set-btn">🔒</button><button class="set-btn">⋯</button></div></td>
+                  </tr>
+                  <tr>
+                    <td><div class="set-row-left"><span class="set-rank">4</span><span class="set-cover" style="background: linear-gradient(135deg,#f97316,#7c2d12);">AD</span></div></td>
+                    <td><div class="set-info"><span class="t">Another Dawn</span><span class="a">Adana Twins</span></div></td>
+                    <td style="font-family:var(--font-mono); color:var(--text-300);">122</td>
+                    <td><span class="pill-key">8A</span></td>
+                    <td><div class="set-energy"><div class="set-energy-bar"><div class="set-energy-fill e-mid" style="width:58%"></div></div></div></td>
+                    <td><div class="set-actions"><button class="set-btn">↻</button><button class="set-btn">🔒</button><button class="set-btn">⋯</button></div></td>
+                  </tr>
+                  <tr>
+                    <td><div class="set-row-left"><span class="set-rank">5</span><span class="set-cover" style="background: linear-gradient(135deg,#ef4444,#7f1d1d);">TS</span></div></td>
+                    <td><div class="set-info"><span class="t">The Sound of You</span><span class="a">ARTBAT</span></div></td>
+                    <td style="font-family:var(--font-mono); color:var(--text-300);">124</td>
+                    <td><span class="pill-key">9A</span></td>
+                    <td><div class="set-energy"><div class="set-energy-bar"><div class="set-energy-fill e-high" style="width:70%"></div></div></div></td>
+                    <td><div class="set-actions"><button class="set-btn">↻</button><button class="set-btn">🔒</button><button class="set-btn">⋯</button></div></td>
+                  </tr>
+                  <tr>
+                    <td><div class="set-row-left"><span class="set-rank">6</span><span class="set-cover" style="background: linear-gradient(135deg,#38bdf8,#075985);">YG</span></div></td>
+                    <td><div class="set-info"><span class="t">You Got</span><span class="a">Vintage Culture</span></div></td>
+                    <td style="font-family:var(--font-mono); color:var(--text-300);">126</td>
+                    <td><span class="pill-key">10A</span></td>
+                    <td><div class="set-energy"><div class="set-energy-bar"><div class="set-energy-fill e-high" style="width:82%"></div></div></div></td>
+                    <td><div class="set-actions"><button class="set-btn">↻</button><button class="set-btn">🔒</button><button class="set-btn">⋯</button></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
 
-              <p class="panel-subtitle">
-                Configure identifiers, Copilot provider and Rekordbox paths.
-                Click the ⚙️ button top-right to open the settings form.
-              </p>
+        <!-- ===================================================================== -->
+        <!-- VISTA 5 · ANÁLISIS (Set analysis + Energy Curve)                     -->
+        <!-- ===================================================================== -->
+        <section class="view-wrapper" id="view-analisis">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <button class="btn-ghost" title="Volver" aria-label="Volver">← Volver</button>
+              <h2 style="padding-left:8px;">Análisis de Set</h2>
+            </div>
+            <div class="toolbar-right">
+              <select class="select-chip" aria-label="Comparar con"><option>Comparar con</option><option>Set ideal</option><option>Último set</option></select>
+              <button class="btn-ghost">⇪ Exportar</button>
+              <select class="select-chip"><option>Vista general</option></select>
+            </div>
+          </div>
+
+          <div style="padding: 24px var(--content-px) 28px;">
+            <div class="section" style="display:flex; align-items:center; gap:18px; margin-bottom: 20px;">
+              <div class="set-cover" style="width:64px; height:64px; border-radius:14px; background: linear-gradient(135deg,#6366f1,#a855f7); font-size:16px;">SS</div>
+              <div>
+                <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--text-100); letter-spacing:-0.3px;">Sunset Session</h3>
+                <p style="margin:4px 0 0; color:var(--text-400); font-size:12.5px;">2024-06-04 · 2h 13m · 28 tracks</p>
+              </div>
+              <div style="margin-left:auto; display:flex; gap:8px; font-family:var(--font-mono); font-size:11px; color:var(--text-400);">
+                <span style="padding:5px 10px; background:rgba(15,23,42,0.7); border:1px solid var(--border-200); border-radius:999px;">⬇ 0:00</span>
+                <span style="padding:5px 10px; background:rgba(15,23,42,0.7); border:1px solid var(--border-200); border-radius:999px;">⬈ 0:50</span>
+                <span style="padding:5px 10px; background:rgba(15,23,42,0.7); border:1px solid var(--border-200); border-radius:999px;">↗ 1:00</span>
+                <span style="padding:5px 10px; background:rgba(15,23,42,0.7); border:1px solid var(--border-200); border-radius:999px;">↘ 1:30</span>
+                <span style="padding:5px 10px; background:rgba(15,23,42,0.7); border:1px solid var(--border-200); border-radius:999px;">↓ 2:00</span>
+              </div>
             </div>
 
-            <div style="display:flex; gap:10px;">
-              <button
-                id="settings-open-button"
-                class="button button-primary"
-                type="button"
-              >
-                Open Settings Form
-              </button>
+            <div class="chart-card" style="margin-bottom:20px;">
+              <div class="chart-title">
+                <h3>Curva de energía por etapa</h3>
+                <span class="hint">Eje Y: 0-10 · Eje X: minutos del set · Áreas coloreadas por stage</span>
+              </div>
+              <div class="energy-curve-wrap">
+                <svg class="energy-curve-svg" viewBox="0 0 1200 220" preserveAspectRatio="none" aria-label="Energy curve multi-stage chart">
+                  <defs>
+                    <linearGradient id="grad-opening" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#94a3b8" stop-opacity="0.6"/><stop offset="100%" stop-color="#94a3b8" stop-opacity="0.05"/></linearGradient>
+                    <linearGradient id="grad-warmup"  x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#4ade80" stop-opacity="0.65"/><stop offset="100%" stop-color="#4ade80" stop-opacity="0.06"/></linearGradient>
+                    <linearGradient id="grad-build"   x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#facc15" stop-opacity="0.65"/><stop offset="100%" stop-color="#facc15" stop-opacity="0.06"/></linearGradient>
+                    <linearGradient id="grad-peak"    x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#fb923c" stop-opacity="0.7"/><stop offset="100%" stop-color="#fb923c" stop-opacity="0.06"/></linearGradient>
+                    <linearGradient id="grad-bridge"  x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#a855f7" stop-opacity="0.65"/><stop offset="100%" stop-color="#a855f7" stop-opacity="0.06"/></linearGradient>
+                    <linearGradient id="grad-cooldown"x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#38bdf8" stop-opacity="0.6"/><stop offset="100%" stop-color="#38bdf8" stop-opacity="0.05"/></linearGradient>
+                    <linearGradient id="grad-closing" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#64748b" stop-opacity="0.55"/><stop offset="100%" stop-color="#64748b" stop-opacity="0.04"/></linearGradient>
+                  </defs>
+                  <g transform="translate(50 20)">
+                    <text class="ec-axis-y" x="-10" y="0" text-anchor="end">10</text>
+                    <text class="ec-axis-y" x="-10" y="45" text-anchor="end">9</text>
+                    <text class="ec-axis-y" x="-10" y="90" text-anchor="end">8</text>
+                    <text class="ec-axis-y" x="-10" y="135" text-anchor="end">7</text>
+                    <text class="ec-axis-y" x="-10" y="180" text-anchor="end">6</text>
+                    <text class="ec-axis-y" x="-10" y="182" text-anchor="end" style="transform: translateY(10px);">0</text>
+                    <line class="ec-grid-line" x1="0" y1="0" x2="1100" y2="0"/>
+                    <line class="ec-grid-line" x1="0" y1="45" x2="1100" y2="45"/>
+                    <line class="ec-grid-line" x1="0" y1="90" x2="1100" y2="90"/>
+                    <line class="ec-grid-line" x1="0" y1="135" x2="1100" y2="135"/>
+                    <line class="ec-grid-line" x1="0" y1="180" x2="1100" y2="180"/>
+                    <rect class="ec-stage-band s-opening"  x="0"    y="0" width="90"   height="180"/>
+                    <rect class="ec-stage-band s-warmup"   x="90"   y="0" width="210"  height="180"/>
+                    <rect class="ec-stage-band s-build"    x="300"  y="0" width="330"  height="180"/>
+                    <rect class="ec-stage-band s-peak"     x="630"  y="0" width="230"  height="180"/>
+                    <rect class="ec-stage-band s-bridge"   x="860"  y="0" width="70"   height="180"/>
+                    <rect class="ec-stage-band s-cooldown" x="930"  y="0" width="100"  height="180"/>
+                    <rect class="ec-stage-band s-closing"  x="1030" y="0" width="70"   height="180"/>
+                    <path class="ec-area-seg a-opening"  d="M0,155 L45,125 L90,110 L90,180 L0,180 Z"/>
+                    <path class="ec-area-seg a-warmup"   d="M90,110 L160,85 L220,70 L300,55 L300,180 L90,180 Z"/>
+                    <path class="ec-area-seg a-build"    d="M300,55 L400,40 L500,22 L600,20 L630,15 L630,180 L300,180 Z"/>
+                    <path class="ec-area-seg a-peak"     d="M630,15 L700,8 L800,12 L860,30 L860,180 L630,180 Z"/>
+                    <path class="ec-area-seg a-bridge"   d="M860,30 L895,48 L930,60 L930,180 L860,180 Z"/>
+                    <path class="ec-area-seg a-cooldown" d="M930,60 L980,95 L1030,130 L1030,180 L930,180 Z"/>
+                    <path class="ec-area-seg a-closing"  d="M1030,130 L1070,150 L1100,162 L1100,180 L1030,180 Z"/>
+                    <path class="ec-line" d="M0,155 Q60,135 90,110 Q160,80 220,70 Q260,60 300,55 Q400,30 500,22 Q560,18 630,15 Q720,4 800,12 Q830,22 860,30 Q890,42 930,60 Q960,80 1030,130 Q1065,145 1100,162"/>
+                    <line class="ec-marker-line" x1="220" y1="0" x2="220" y2="180"/>
+                    <circle class="ec-dot" cx="220" cy="70" r="5"/>
+                    <text class="ec-marker-label" x="220" y="-2">▲ warmup end</text>
+                    <line class="ec-marker-line" x1="594" y1="0" x2="594" y2="180"/>
+                    <circle class="ec-dot" cx="594" cy="17" r="5"/>
+                    <text class="ec-marker-label" x="594" y="-2">▲ peak start</text>
+                    <g transform="translate(0 196)">
+                      <text class="ec-axis-x" x="0">0:00</text>
+                      <text class="ec-axis-x" x="275">0:30</text>
+                      <text class="ec-axis-x" x="550">1:00</text>
+                      <text class="ec-axis-x" x="825">1:30</text>
+                      <text class="ec-axis-x" x="1100">2:00</text>
+                    </g>
+                  </g>
+                </svg>
+                <div class="legend-row" aria-hidden="true">
+                  <span class="lg-item"><span class="lg-dot" style="background:var(--stage-opening);"></span>Opening</span>
+                  <span class="lg-item"><span class="lg-dot" style="background:var(--stage-warmup);"></span>Warm-up</span>
+                  <span class="lg-item"><span class="lg-dot" style="background:var(--stage-build);"></span>Build</span>
+                  <span class="lg-item"><span class="lg-dot" style="background:var(--stage-peak);"></span>Peak</span>
+                  <span class="lg-item"><span class="lg-dot" style="background:var(--stage-bridge);"></span>Bridge</span>
+                  <span class="lg-item"><span class="lg-dot" style="background:var(--stage-cooldown);"></span>Cooldown</span>
+                  <span class="lg-item"><span class="lg-dot" style="background:var(--stage-closing);"></span>Closing</span>
+                </div>
+              </div>
             </div>
-          </section>
 
-          <section class="library-layout" style="display:block;">
-            <article
-              class="panel library-panel"
-              style="padding:28px 32px;"
-            >
-              <h3 style="margin:0 0 10px;">
-                Configuration location
-              </h3>
+            <div class="metrics-5-grid" style="margin-bottom:20px;">
+              <div class="metric-card"><div class="label">Energía clave</div><div class="value">7.2 <span class="sub">/ 10</span></div></div>
+              <div class="metric-card"><div class="label">BPM promedio</div><div class="value">126.4</div></div>
+              <div class="metric-card"><div class="label">Mezcla armónica</div><div class="value"><span class="pill-key" style="font-size:17px;">8A</span></div></div>
+              <div class="metric-card"><div class="label">Variación BPM</div><div class="value">18.6</div></div>
+              <div class="metric-card"><div class="label">Flujo</div><div class="value">8.1 <span class="sub">/ 10</span></div></div>
+            </div>
 
-              <p style="margin:0 0 16px; color:#4b5563;">
-                Settings are persisted to the secure local folder
-                <code
-                  style="padding:2px 8px; background:#f3f4f6; border-radius:6px;"
-                >~/.config/dj-sync-agent/settings.json</code>
-                with file mode <code style="padding:2px 6px; background:#f3f4f6; border-radius:6px;">0600</code>.
-              </p>
+            <div class="chart-card">
+              <div class="chart-title">
+                <h3>Distribución de Key (Camelot)</h3>
+                <span class="hint">28 tracks analizados</span>
+              </div>
+              <div class="donut-wrap">
+                <svg class="donut-ring-svg" viewBox="0 0 42 42" aria-label="Distribución Key Camelot">
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#1e293b" stroke-width="7"/>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#8b5cf6" stroke-width="7" stroke-dasharray="35 65" stroke-dashoffset="25"/>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#fb923c" stroke-width="7" stroke-dasharray="20 80" stroke-dashoffset="-10"/>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#38bdf8" stroke-width="7" stroke-dasharray="15 85" stroke-dashoffset="-30"/>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#f472b6" stroke-width="7" stroke-dasharray="10 90" stroke-dashoffset="-45"/>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#22c55e" stroke-width="7" stroke-dasharray="10 90" stroke-dashoffset="-55"/>
+                  <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#64748b" stroke-width="7" stroke-dasharray="10 90" stroke-dashoffset="-65"/>
+                </svg>
+                <div class="donut-legend" role="list">
+                  <div class="donut-item" role="listitem"><span class="donut-swatch" style="background:#8b5cf6;"></span>8A<strong>35%</strong></div>
+                  <div class="donut-item" role="listitem"><span class="donut-swatch" style="background:#fb923c;"></span>9A<strong>20%</strong></div>
+                  <div class="donut-item" role="listitem"><span class="donut-swatch" style="background:#38bdf8;"></span>7A<strong>15%</strong></div>
+                  <div class="donut-item" role="listitem"><span class="donut-swatch" style="background:#f472b6;"></span>10A<strong>10%</strong></div>
+                  <div class="donut-item" role="listitem"><span class="donut-swatch" style="background:#22c55e;"></span>6A<strong>10%</strong></div>
+                  <div class="donut-item" role="listitem"><span class="donut-swatch" style="background:#64748b;"></span>Otros<strong>10%</strong></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-              <div style="display:grid; grid-template-columns: 1.1fr 1fr; gap:24px;">
-                <div>
-                  <h4 style="margin:0 0 8px;">
-                    Values you can configure here
-                  </h4>
+        <!-- ===================================================================== -->
+        <!-- VISTA 6 · HISTORIAL                                                   -->
+        <!-- ===================================================================== -->
+        <section class="view-wrapper" id="view-historial">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <h2>Historial de sesiones</h2>
+              <span class="count">47 sets anteriores</span>
+            </div>
+            <div class="toolbar-right">
+              <select class="select-chip"><option>Últimos 30 días</option><option>Últimos 90 días</option><option>Todos</option></select>
+              <input class="input-search" placeholder="Buscar sesiones..." />
+            </div>
+          </div>
+          <div style="padding: 24px var(--content-px) 28px;">
+            <table class="dense-table" aria-label="Historial de sets">
+              <thead><tr><th>Fecha</th><th>Nombre</th><th>Duración</th><th>Tracks</th><th>BPM prom</th><th>Energía</th><th>Armonía</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style="font-family:var(--font-mono); color:var(--text-300);">2024-06-04</td>
+                  <td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#6366f1,#a855f7);">SS</span><span class="track-mini-name">Sunset Session</span></div></td>
+                  <td>2h 13m</td><td>28</td><td style="font-family:var(--font-mono);">126.4</td>
+                  <td style="color: var(--energy-green); font-weight:600;">7.2 / 10</td>
+                  <td><span class="pill-key">8A</span></td>
+                  <td style="text-align:right;"><button class="btn-ghost">Ver análisis →</button></td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--font-mono); color:var(--text-300);">2024-05-24</td>
+                  <td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#fb923c,#7c2d12);">NR</span><span class="track-mini-name">Night Rider</span></div></td>
+                  <td>3h 05m</td><td>42</td><td style="font-family:var(--font-mono);">128.0</td>
+                  <td style="color: var(--energy-orange); font-weight:600;">8.3 / 10</td>
+                  <td><span class="pill-key">9A</span></td>
+                  <td style="text-align:right;"><button class="btn-ghost">Ver análisis →</button></td>
+                </tr>
+                <tr>
+                  <td style="font-family:var(--font-mono); color:var(--text-300);">2024-05-10</td>
+                  <td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#4ade80,#065f46);">DA</span><span class="track-mini-name">Deep Afters</span></div></td>
+                  <td>4h 22m</td><td>58</td><td style="font-family:var(--font-mono);">120.2</td>
+                  <td style="color: var(--energy-yellow); font-weight:600;">5.9 / 10</td>
+                  <td><span class="pill-key">7A</span></td>
+                  <td style="text-align:right;"><button class="btn-ghost">Ver análisis →</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-                  <ul style="margin:0; padding-left:20px; line-height:1.75; color:#374151;">
-                    <li>SYNC_AGENT_ID, SYNC_API_URL, SYNC_API_KEY</li>
-                    <li>REKORDBOX_DB_PATH, REKORDBOX_DB_KEY, Cipher compatibility (default 4)</li>
-                    <li>Copilot provider: OpenAI, Anthropic, OpenAI-compatible</li>
-                    <li>COPILOT_API_KEY, COPILOT_BASE_URL, COPILOT_MODEL</li>
-                    <li>Intelligence jobs API URL and LOG_LEVEL</li>
+        <!-- ===================================================================== -->
+        <!-- VISTA 7 · COPILOT (Dedicado, grande)                                 -->
+        <!-- ===================================================================== -->
+        <section class="view-wrapper" id="view-copilot">
+          <div class="section-hero" style="padding: 28px var(--content-px) 8px;">
+            <h1 style="font-size:28px;">DJ Copilot Chat 💬</h1>
+            <p>Pregunta por recomendaciones, construcciones de sets, análisis de energía, transiciones armónicas y más. Tu biblioteca + tu estilo son el contexto.</p>
+          </div>
+          <div class="section" style="margin: 18px var(--content-px) 28px; padding:0; overflow:hidden; min-height: 62vh; display:flex; flex-direction: column;">
+            <div class="ds-message-list" id="ds-message-list" style="flex:1; padding: 22px 24px; overflow-y:auto; display:flex; flex-direction:column; gap:14px; min-height: 420px;">
+              <div style="display:flex; gap:12px; align-self:flex-start; max-width: 78%;">
+                <div class="avatar" style="width:34px; height:34px; flex:0 0 auto;">🤖</div>
+                <div style="padding:12px 16px; background: var(--bg-glass); border: 1px solid var(--border-200); border-radius: 0 16px 16px 16px;">
+                  <p style="margin:0; font-size:13.5px; line-height:1.55; color:var(--text-200);">¡Hola Jorge! Soy tu <strong style="color: var(--accent-indigo);">DJ Copilot</strong>. Algunas cosas en que te puedo ayudar hoy:</p>
+                  <ul style="margin:8px 0 0; padding-left: 18px; color: var(--text-300); font-size:13px; line-height:1.7;">
+                    <li>Preparar un set 2h Progressive, 122 BPM → 130 BPM, clave 8A inicial.</li>
+                    <li>Analizar el balance energético de tu último set (Sunset Session).</li>
+                    <li>5 tracks de transición perfecta después de "Another Dawn" de Adana Twins.</li>
+                    <li>Preparar un warm-up 1h después de las 00:00 para 50 personas.</li>
                   </ul>
                 </div>
-
-                <div
-                  class="empty-state"
-                  style="margin:0;"
-                >
-                  💡 Tip: after saving changes, restart DJ Sync Agent so the new
-                  settings are picked up by the background services.
-                </div>
               </div>
-            </article>
-          </section>
+            </div>
+            <div style="padding: 14px 18px 20px; border-top:1px solid var(--border-100); background: rgba(15,23,42,0.4);">
+              <div class="cp-composer-inner" style="max-width: none;">
+                <textarea id="cp-chat-textarea" rows="1" placeholder="Pregúntale al Copilot... (ej: 'Recomiéndame tracks para un set progressive house de 2 horas')" aria-label="Mensaje para Copilot"></textarea>
+                <button id="cp-chat-send" class="send" type="button" aria-label="Enviar mensaje" title="Enviar">➤</button>
+              </div>
+            </div>
+          </div>
         </section>
+
+        <!-- ===================================================================== -->
+        <!-- VISTA 8 · AJUSTES                                                    -->
+        <!-- ===================================================================== -->
+        <section class="view-wrapper" id="view-ajustes">
+          <div class="section-hero" style="padding: 28px var(--content-px) 8px;">
+            <h1 style="font-size:28px;">Ajustes ⚙️</h1>
+            <p>Configura las credenciales, fuentes de datos y preferencias de tu Copilot DJ. Todo se guarda localmente en <code style="background:rgba(15,23,42,0.8); padding:2px 6px; border-radius:6px; font-family:var(--font-mono); font-size:12px;">~/.config/dj-sync-agent/</code>.</p>
+          </div>
+          <div style="padding: 18px var(--content-px) 28px; display:grid; gap:18px; grid-template-columns: 1.1fr 1fr;">
+            <div class="section">
+              <div class="section-header"><div><h3>Sincronización</h3><p>Conexión con Rekordbox y Agent ID</p></div></div>
+              <div style="display:grid; gap:14px;">
+                <div class="field"><label>Sync Agent ID</label><input id="set-sync-agent-id" type="text" value="agent-jq-prod-001" placeholder="Introduce tu SYNC_AGENT_ID"/></div>
+                <div class="field"><label>Ruta master.db de Rekordbox (solo lectura)</label><input id="set-rekordbox-db-path" type="text" value="~/Music/PioneerDJ/rekordbox/master.db" placeholder="/path/to/rekordbox/master.db"/></div>
+                <div class="field"><label>Intervalo de sondeo Now Playing</label><input id="set-np-interval-ms" type="number" value="500" min="200" step="100"/> ms</div>
+                <button id="set-btn-sync-save" class="btn-primary" style="justify-self:start;">💾 Guardar sincronización</button>
+              </div>
+            </div>
+            <div class="section">
+              <div class="section-header"><div><h3>Copilot LLM</h3><p>Proveedor y credenciales del asistente</p></div></div>
+              <div style="display:grid; gap:14px;">
+                <div class="field">
+                  <label>Proveedor</label>
+                  <select id="set-copilot-provider"><option value="anthropic">Anthropic Claude (recomendado)</option><option value="openai">OpenAI GPT-4o</option><option value="openai-compatible">Google Gemini / OpenRouter</option></select>
+                </div>
+                <div class="field"><label>API Key</label><input id="set-copilot-api-key" type="password" value="sk-ant-••••••••••••••••••••" placeholder="sk-..."/></div>
+                <div class="field"><label>Modelo</label><input id="set-copilot-model" type="text" value="claude-sonnet-4-20240229"/></div>
+                <div class="field"><label>Máximo tokens respuesta</label><input id="set-copilot-max-tokens" type="number" value="2048" min="256" step="256"/></div>
+                <button id="set-btn-copilot-save" class="btn-primary" style="justify-self:start;">🤖 Guardar credenciales</button>
+              </div>
+            </div>
+            <div class="section" style="grid-column: 1 / -1;">
+              <div class="section-header"><div><h3>Preferencias DJ</h3><p>Ajusta tu estilo musical y restricciones de mezcla</p></div></div>
+              <div style="display:grid; grid-template-columns: repeat(4,1fr); gap:18px;">
+                <div class="field"><label>BPM mínimo</label><input id="set-bpm-min" type="number" value="118"/></div>
+                <div class="field"><label>BPM máximo</label><input id="set-bpm-max" type="number" value="132"/></div>
+                <div class="field"><label>Energía mínima</label><input id="set-energy-min" type="number" value="3" min="0" max="10"/></div>
+                <div class="field"><label>Energía máxima</label><input id="set-energy-max" type="number" value="10" min="0" max="10"/></div>
+                <div class="field" style="grid-column: span 2;"><label>Géneros excluídos (separados por coma)</label><input id="set-excluded-genres" type="text" value="Hardstyle, Psytrance, Raw Techno"/></div>
+                <div class="field"><label>Ventana exclusión recientes</label><select id="set-recent-window"><option value="10">10 tracks</option><option value="20">20 tracks</option><option value="30">30 tracks</option></select></div>
+                <div class="field"><label>Máximo artistas repetidos en 1h</label><select id="set-max-dupe-artists"><option value="0">0 (ninguno)</option><option value="1">1</option><option value="2">2</option></select></div>
+              </div>
+              <div style="margin-top:18px; display:flex; justify-content:flex-end;"><button id="set-btn-prefs-save" class="btn-primary">🎼 Aplicar preferencias</button></div>
+            </div>
+          </div>
+        </section>
+
       </main>
+
+      <!-- PANEL COPILOT DERECHO (visible solo Inicio por defecto) -->
+      <aside class="copilot-panel" id="copilot-panel" aria-label="Panel Copilot rápido">
+        <div class="cp-header">
+          <div>
+            <h3><span class="spark" aria-hidden="true">✦</span>Copilot</h3>
+            <p>¿Qué necesitas hoy?</p>
+          </div>
+        </div>
+        <div class="prompt-chips" aria-label="Acciones rápidas Copilot">
+          <button class="prompt-chip" type="button">🎶 Recomiéndame tracks para un set progressive house de 2 horas</button>
+          <button class="prompt-chip" type="button">🎯 Construye un set que empiece suave y termine en peak time</button>
+          <button class="prompt-chip" type="button">🔋 Analiza la energía de mi biblioteca</button>
+          <button class="prompt-chip" type="button">🎚️ ¿Qué tracks van bien con lo que estoy tocando?</button>
+        </div>
+        <div class="cp-composer">
+          <div class="cp-composer-inner">
+            <textarea id="cp-panel-textarea" rows="1" placeholder="Escribe tu solicitud..." aria-label="Solicitud Copilot"></textarea>
+            <button id="cp-panel-send" class="send" type="button" title="Enviar" aria-label="Enviar solicitud a Copilot">➤</button>
+          </div>
+        </div>
+      </aside>
     </div>
 
-    <script
-      type="module"
-      src="./renderer.js"
-    ></script>
-    <script
-      type="module"
-      src="./audio.js"
-    ></script>
-    <script
-      type="module"
-      src="./production-ui-entry.js"
-    ></script>
-  </body>
+    <!-- GLOBAL · NOW PLAYING BAR (sticky bottom) ============================= -->
+    <footer class="app-nowplaying" id="app-nowplaying" aria-label="Reproductor actual">
+      <div class="np-left">
+        <div class="np-art" id="np-art" aria-hidden="true">AD</div>
+        <div class="np-meta">
+          <div class="np-title" id="np-title">Another Dawn</div>
+          <div class="np-artist" id="np-artist">Adana Twins</div>
+        </div>
+      </div>
+      <div class="np-center">
+        <div class="np-controls" role="group" aria-label="Controles reproducción">
+          <button class="np-btn" title="Aleatorio" aria-label="Aleatorio">🔀</button>
+          <button class="np-btn" title="Anterior" aria-label="Pista anterior">⏮</button>
+          <button class="np-btn np-play" id="np-play-btn" title="Reproducir / Pausar" aria-label="Reproducir o pausar">⏸</button>
+          <button class="np-btn" title="Siguiente" aria-label="Pista siguiente">⏭</button>
+          <button class="np-btn" title="Repetir" aria-label="Repetir">🔁</button>
+        </div>
+        <div class="np-wave-wrap">
+          <span class="np-time" id="np-time-cur">1:24</span>
+          <div class="np-wave" id="np-wave" aria-hidden="true"></div>
+          <span class="np-time" id="np-time-tot">5:42</span>
+        </div>
+      </div>
+      <div class="np-right">
+        <div class="np-meta-pills" aria-label="Metadatos actuales">
+          <span class="pill-key" id="np-bpm">122 <small style="font-weight:400; opacity:0.7;">BPM</small></span>
+          <span class="pill-key" id="np-key" style="background: rgba(74,222,128,0.14); color: var(--energy-green);">8A</span>
+        </div>
+        <div class="np-vol">
+          <span class="np-vol-icon" title="Volumen" aria-hidden="true">🔊</span>
+          <input class="np-slider" id="np-volume" type="range" min="0" max="100" value="78" aria-label="Volumen"/>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <script type="module" src="renderer.js"></script>
+</body>
 </html>

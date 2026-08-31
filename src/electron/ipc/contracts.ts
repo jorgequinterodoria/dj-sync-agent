@@ -14,6 +14,37 @@ import type { DJSyncApplicationSnapshot as RuntimeApplicationSnapshot } from '..
 import type {
   UserSettings,
 } from '../../config/user-settings.store.js';
+import type {
+  RecommendationConstraints,
+  RecommendationContext,
+  RecommendationResult,
+  SetIntelligenceResult,
+  SetTrackInput,
+} from '../../recommendations/recommendation-types.js';
+import type { DJPlaylist } from '../../core/domain/dj-playlist.js';
+import type {
+  SetBuildConstraints,
+  SetBuildResult,
+} from '../../recommendations/set-builder.js';
+import type {
+  DJPreferenceDimension,
+  DJPreferenceKind,
+  DJSessionRow,
+  DJSessionSummary,
+  DJSessionTrackRow,
+  ExplicitPreferenceInput,
+} from '../../core/local-store/ports.js';
+import type {
+  LiveDJContextSnapshotPublic,
+  LiveSlot,
+} from '../../core/live/live-dj-context-state.js';
+import type {
+  LiveNowPlaying,
+  NowPlayingSourceType,
+} from '../../core/live/now-playing-port.js';
+import type {
+  RecommendLiveInput,
+} from '../../core/live/live-recommend.js';
 
 export type {
   UserSettings,
@@ -91,6 +122,10 @@ export interface LibraryListOptions {
   afterId?: string | null;
   limit?: number;
   search?: string;
+  readonly genres?: readonly string[] | string | null;
+  readonly bpmMin?: number | null;
+  readonly bpmMax?: number | null;
+  readonly keys?: readonly string[] | string | null;
 }
 
 export type AudioAnalysisApplicationStatus =
@@ -214,10 +249,127 @@ export interface DJSyncRendererApi {
     get(): Promise<UserSettings>;
     save(input: UserSettings): Promise<UserSettings>;
   };
+
+  recommend: {
+    recommend(input: RecommendationContext): Promise<RecommendationResult>;
+    analyzeSet(input: SetAnalysisContext): Promise<SetIntelligenceResult>;
+    snapshot(): Promise<DJSyncRecommendationServiceSnapshot>;
+  };
+
+  setBuilder: {
+    build(input: {
+      readonly deviceId: string;
+      readonly request: string;
+      readonly trackIds: readonly string[];
+      readonly startTrackId?: string;
+      readonly trackCount?: number;
+      readonly durationMinutes?: number;
+      readonly constraints?: SetBuildConstraints;
+    }): Promise<SetBuildResult>;
+    analyze(input: {
+      readonly deviceId: string;
+      readonly request: string;
+      readonly trackIds: readonly string[];
+    }): Promise<SetBuildResult>;
+  };
+
+  history: {
+    listSessions(limit?: number): Promise<readonly DJSessionRow[]>;
+    getSession(sessionId: string): Promise<DJSessionSummary | null>;
+    getSessionTracks(sessionId: string): Promise<readonly DJSessionTrackRow[]>;
+  };
+
+  preferences: {
+    listValues(options?: {
+      readonly dimension?: DJPreferenceDimension;
+      readonly kind?: DJPreferenceKind;
+    }): Promise<
+      ReadonlyArray<{
+        readonly value: string;
+        readonly kind: DJPreferenceKind;
+        readonly totalWeight: number;
+        readonly lastOccurrence: string;
+      }>
+    >;
+    isExcluded(args: {
+      readonly dimension: DJPreferenceDimension;
+      readonly value: string;
+    }): Promise<boolean>;
+    saveExplicit(input: ExplicitPreferenceInput): Promise<void>;
+    removeExplicit(args: {
+      readonly dimension: DJPreferenceDimension;
+      readonly value: string;
+    }): Promise<void>;
+  };
+
+  live: {
+    getNow(): Promise<LiveNowPlaying | null>;
+    pushManualTrack(input: {
+      readonly trackId: string;
+      readonly trackHash?: string | null;
+      readonly title?: string | null;
+      readonly artist?: string | null;
+      readonly bpm?: number | null;
+      readonly musicalKey?: string | null;
+      readonly durationMs?: number | null;
+      readonly energyHint01?: number | null;
+    }): Promise<LiveNowPlaying>;
+    tickElapsed(addMs: number): Promise<LiveNowPlaying | null>;
+    recommend(input: RecommendLiveInput): Promise<RecommendationResult>;
+    snapshot(): Promise<LiveDJContextSnapshotPublic | null>;
+    subscribe(listener: (snapshot: LiveDJContextSnapshotPublic | null) => void): () => void;
+  };
+
+  playlist: {
+    list(args?: {
+      readonly search?: string;
+      readonly limit?: number;
+    }): Promise<readonly DJPlaylist[]>;
+    get(args: {
+      readonly id: string;
+    }): Promise<DJPlaylist | null>;
+    getTracks(args: {
+      readonly id: string;
+    }): Promise<readonly string[]>;
+  };
+
+  workspace: {
+    aggregateStats(): Promise<WorkspaceAggregateStats>;
+  };
+}
+
+export interface SetAnalysisContext {
+  readonly deviceId: string;
+  readonly request?: string;
+  readonly setId?: string;
+  readonly trackIds: readonly string[];
+  readonly contextTag?: string | null;
+}
+
+export interface DJSyncRecommendationServiceSnapshot {
+  readonly configured: boolean;
+  readonly status: 'disabled' | 'ready' | 'error';
+  readonly lastRecommendationAt: string | null;
+  readonly lastSetAnalysisAt: string | null;
+  readonly lastRecommendationId: string | null;
+  readonly lastSetId: string | null;
+  readonly lastError: string | null;
+}
+
+export interface WorkspaceAggregateStats {
+  readonly schemaVersion: 1;
+  readonly generatedAt: string;
+  readonly libraryTracks: number;
+  readonly playlists: number;
+  readonly savedSets: number;
+  readonly analyzedHours: number;
+  readonly liveNowPlayingSource: NowPlayingSourceType;
+  readonly lastSessionAt: string | null;
 }
 
 export type {
   DJSyncIntelligenceSnapshot,
+  DJPlaylist,
   IntelligenceJob,
   LibraryPage,
   LibraryTrackSummary,

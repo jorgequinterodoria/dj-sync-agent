@@ -4,7 +4,8 @@ import type {
   LatestFeature,
 } from '../runtime/dj-sync-intelligence.js';
 
-export const INTELLIGENCE_ENGINE_VERSION = '1.0.0';
+export const INTELLIGENCE_ENGINE_VERSION = '2.0.0';
+export const INTELLIGENCE_ENGINE_LEGACY_V1 = '1.0.0' as const;
 
 export type TempoBand =
   | 'very_slow'
