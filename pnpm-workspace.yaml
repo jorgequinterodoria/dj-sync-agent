@@ -1,4 +1,5 @@
 packages: []
 allowBuilds:
   '@journeyapps/sqlcipher': true
+  electron-winstaller: true
   esbuild: false

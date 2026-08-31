@@ -6,6 +6,7 @@ const EnvSchema = z.object({
   REKORDBOX_DB_PATH: z.string().optional(),
   REKORDBOX_DB_KEY: z.string().optional(),
   REKORDBOX_CIPHER_COMPATIBILITY: z.coerce.number().int().min(1).max(4).default(4),
+  INTELLIGENCE_JOBS_API_URL: z.string().url().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 
