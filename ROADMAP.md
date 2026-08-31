@@ -311,3 +311,38 @@ Lista detallada de **gap reales** encontrados al conectar runtime core al shell 
 | LiveDJ Context V1 integrado | ✅ NowPlayingPort safe · LiveDJContext checkpoint 30s · recommendLive slot hard constraints · EnergyCurve planned vs live deviation±0.05 | ✅ F56-59 9 suite tests PASS Bloque F |
 | Git cleanliness | `.gitignore` filtrado correcto (release/ 557MB NO al repo) | ✅ Verificado en `git status --porcelain` |
 | Electron DMG verificado | 132,1 MB arm64 + ZIP + blockmap + latest-mac.yml | ✅ `scripts/verify-release-artifacts.ts` exit 0 |
+
+## FASE 66 — MUSICAL INTELLIGENCE V2
+
+**Estado:** 🟡 Implementación inicial completada; pendiente de validación local.
+
+### Alcance
+
+- DSP determinista sobre PCM sin dependencias runtime nuevas.
+- RMS / nivel energético.
+- dynamic range.
+- zero-crossing/rhythmic density.
+- spectral centroid.
+- confidence y quality flags.
+- provider HTTP de embeddings compatible con el contrato `SemanticEmbeddingProvider`.
+- HTTPS obligatorio.
+- validación de dimensiones.
+- orden determinista de vectores.
+- compatibilidad con el semantic index existente sin cambiar sus consumidores.
+
+### Archivos
+
+- `src/audio/audio-musical-intelligence-v2.ts`
+- `src/audio/audio-musical-intelligence-v2.test.ts`
+- `src/intelligence/semantic-embedding-provider-v2.ts`
+- `src/intelligence/semantic-embedding-provider-v2.test.ts`
+
+### Gate
+
+```text
+pnpm typecheck
+pnpm exec node --import tsx --test "src/**/*.test.ts"
+pnpm electron:build
+```
+
+La Fase 66 no se considera cerrada hasta que los tres gates pasen.
