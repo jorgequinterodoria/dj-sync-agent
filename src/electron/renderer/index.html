@@ -181,15 +181,15 @@
               <span class="count" id="biblioteca-count">0 tracks</span>
             </div>
             <div class="toolbar-right">
-              <select class="select-chip" aria-label="Filtrar género">
+              <select id="biblioteca-filter-genre" class="select-chip" aria-label="Filtrar género">
                 <option>Todos los géneros</option>
                 <option>Melodic House</option>
                 <option>Progressive House</option>
                 <option>Deep House</option>
                 <option>Techno</option>
               </select>
-              <select class="select-chip" aria-label="Filtrar BPM"><option>BPM</option><option>115-122</option><option>123-128</option><option>129+</option></select>
-              <select class="select-chip" aria-label="Filtrar Key"><option>Key</option><option>8A</option><option>9A</option><option>7A</option></select>
+              <select id="biblioteca-filter-bpm" class="select-chip" aria-label="Filtrar BPM"><option>BPM</option><option>115-122</option><option>123-128</option><option>129+</option></select>
+              <select id="biblioteca-filter-key" class="select-chip" aria-label="Filtrar Key"><option>Key</option><option>8A</option><option>9A</option><option>7A</option></select>
               <input id="biblioteca-search" class="input-search" type="search" placeholder="Buscar tracks, artistas, álbumes..." aria-label="Buscar en biblioteca" />
             </div>
           </div>
@@ -210,6 +210,11 @@
               <tbody id="biblioteca-tbody">
               </tbody>
             </table>
+          </div>
+          <div class="section" style="margin: 0 var(--content-px) 28px;">
+            <div class="section-header"><div><h3>Playlists</h3><p>Listas disponibles desde Rekordbox</p></div></div>
+            <div id="biblioteca-playlists" class="playlist-list" aria-live="polite"><span class="muted">Cargando playlists…</span></div>
+            <div id="biblioteca-playlist-tracks" class="muted" style="margin-top:10px;"></div>
           </div>
         </section>
 
@@ -239,14 +244,7 @@
               </div>
               <table class="dense-table" aria-label="Recomendaciones top">
                 <thead><tr><th>#</th><th>Track</th><th>Artista</th><th>BPM</th><th>Key</th><th>Match</th><th>Energía</th></tr></thead>
-                <tbody>
-                  <tr><td>1</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#22d3ee,#155e75);">IS</span><span class="track-mini-name">Into Space</span></div></td><td>Parra for Cuva</td><td style="font-family:var(--font-mono);">118</td><td><span class="pill-key">8A</span></td><td style="color: var(--accent-green); font-weight:600;">96%</td><td><span class="wave-bar wb-energy-low"><i style="height:25%"></i><i style="height:35%"></i><i style="height:20%"></i><i style="height:42%"></i><i style="height:30%"></i><i style="height:40%"></i></span></td></tr>
-                  <tr><td>2</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#a855f7,#312e81);">EL</span><span class="track-mini-name">Elements</span></div></td><td>Monolink</td><td style="font-family:var(--font-mono);">120</td><td><span class="pill-key">8A</span></td><td style="color: var(--accent-green); font-weight:600;">94%</td><td><span class="wave-bar wb-energy-mid"><i style="height:35%"></i><i style="height:55%"></i><i style="height:42%"></i><i style="height:60%"></i><i style="height:50%"></i><i style="height:65%"></i></span></td></tr>
-                  <tr><td>3</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#facc15,#78350f);">NL</span><span class="track-mini-name">Northern Lights</span></div></td><td>Yotto</td><td style="font-family:var(--font-mono);">123</td><td><span class="pill-key">9A</span></td><td style="color: var(--accent-green); font-weight:600;">92%</td><td><span class="wave-bar wb-energy-mid"><i style="height:48%"></i><i style="height:65%"></i><i style="height:55%"></i><i style="height:72%"></i><i style="height:58%"></i><i style="height:70%"></i></span></td></tr>
-                  <tr><td>4</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#f97316,#7c2d12);">AD2</span><span class="track-mini-name">Another Dawn</span></div></td><td>Adana Twins</td><td style="font-family:var(--font-mono);">122</td><td><span class="pill-key">8A</span></td><td style="color: var(--accent-green); font-weight:600;">90%</td><td><span class="wave-bar wb-energy-mid"><i style="height:55%"></i><i style="height:72%"></i><i style="height:60%"></i><i style="height:78%"></i><i style="height:65%"></i><i style="height:74%"></i></span></td></tr>
-                  <tr><td>5</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#ef4444,#7f1d1d);">TS2</span><span class="track-mini-name">The Sound of You</span></div></td><td>ARTBAT</td><td style="font-family:var(--font-mono);">124</td><td><span class="pill-key">9A</span></td><td style="color: var(--accent-yellow); font-weight:600;">88%</td><td><span class="wave-bar wb-energy-high"><i style="height:65%"></i><i style="height:80%"></i><i style="height:70%"></i><i style="height:85%"></i><i style="height:72%"></i><i style="height:82%"></i></span></td></tr>
-                  <tr><td>6</td><td><div class="track-mini"><span class="track-mini-art" style="background: linear-gradient(135deg,#38bdf8,#075985);">YG2</span><span class="track-mini-name">You Got</span></div></td><td>Vintage Culture</td><td style="font-family:var(--font-mono);">126</td><td><span class="pill-key">10A</span></td><td style="color: var(--accent-yellow); font-weight:600;">86%</td><td><span class="wave-bar wb-energy-high"><i style="height:72%"></i><i style="height:85%"></i><i style="height:76%"></i><i style="height:90%"></i><i style="height:80%"></i><i style="height:88%"></i></span></td></tr>
-                </tbody>
+                <tbody id="recs-list-output"></tbody>
               </table>
             </div>
           </div>
@@ -400,8 +398,8 @@
             <div class="section" style="display:flex; align-items:center; gap:18px; margin-bottom: 20px;">
               <div class="set-cover" style="width:64px; height:64px; border-radius:14px; background: linear-gradient(135deg,#6366f1,#a855f7); font-size:16px;">SS</div>
               <div>
-                <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--text-100); letter-spacing:-0.3px;">Sunset Session</h3>
-                <p style="margin:4px 0 0; color:var(--text-400); font-size:12.5px;">2024-06-04 · 2h 13m · 28 tracks</p>
+                <h3 id="set-analysis-title" style="margin:0; font-size:18px; font-weight:700; color:var(--text-100); letter-spacing:-0.3px;">Sunset Session</h3>
+                <p id="set-analysis-meta" style="margin:4px 0 0; color:var(--text-400); font-size:12.5px;">Selecciona un set desde Historial</p>
               </div>
               <div style="margin-left:auto; display:flex; gap:8px; font-family:var(--font-mono); font-size:11px; color:var(--text-400);">
                 <span style="padding:5px 10px; background:rgba(15,23,42,0.7); border:1px solid var(--border-200); border-radius:999px;">⬇ 0:00</span>
@@ -418,6 +416,7 @@
                 <span class="hint">Eje Y: 0-10 · Eje X: minutos del set · Áreas coloreadas por stage</span>
               </div>
               <div class="energy-curve-wrap">
+                <div id="set-analysis-energy-curve" class="set-analysis-energy-bars" aria-label="Curva de energía calculada"></div>
                 <svg class="energy-curve-svg" viewBox="0 0 1200 220" preserveAspectRatio="none" aria-label="Energy curve multi-stage chart">
                   <defs>
                     <linearGradient id="grad-opening" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#94a3b8" stop-opacity="0.6"/><stop offset="100%" stop-color="#94a3b8" stop-opacity="0.05"/></linearGradient>
@@ -514,6 +513,11 @@
                   <div class="donut-item" role="listitem"><span class="donut-swatch" style="background:#64748b;"></span>Otros<strong>10%</strong></div>
                 </div>
               </div>
+            </div>
+            <div class="section" style="margin-top:20px;">
+              <div class="section-header"><div><h3>Distribución de tonalidades</h3></div></div>
+              <div id="set-analysis-key-histogram" class="set-analysis-key-histogram"><span class="muted">Selecciona un set.</span></div>
+              <div style="margin-top:14px;"><strong>Advertencias</strong><ul id="set-analysis-warnings"><li>Selecciona un set desde Historial.</li></ul></div>
             </div>
           </div>
         </section>

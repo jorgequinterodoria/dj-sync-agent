@@ -6,6 +6,10 @@ import type {
 } from '../ipc/contracts.js';
 
 import { bindNewSidebarNav } from './production-ui-entry.js';
+import {
+  buildPhase62RecommendationContext,
+  normalizePhase62Filters,
+} from './phase62-ui.js';
 
 type CardStatus =
   | 'success'
@@ -2582,6 +2586,7 @@ type LightApiShape = {
     readonly save?: (s: UserSettingsLite) => Promise<UserSettingsLite>;
   };
   readonly live?: {
+    readonly getNow?: () => Promise<LiveNowPlayingLite | null>;
     readonly subscribe?: (
       listener: (snap: {
         readonly currentNowPlaying: LiveNowPlayingLite | null;
@@ -2701,8 +2706,16 @@ async function wireBiblioteca(): Promise<void> {
   if (typeof document === 'undefined') return;
   const tableBody = document.getElementById('biblioteca-tbody');
   const countEl = document.getElementById('biblioteca-count');
+  const playlistsEl = document.getElementById('biblioteca-playlists');
+  const playlistTracksEl = document.getElementById('biblioteca-playlist-tracks');
   const searchInput =
     document.querySelector<HTMLInputElement>('#biblioteca-search');
+  const genreSelect =
+    document.querySelector<HTMLSelectElement>('#biblioteca-filter-genre');
+  const bpmSelect =
+    document.querySelector<HTMLSelectElement>('#biblioteca-filter-bpm');
+  const keySelect =
+    document.querySelector<HTMLSelectElement>('#biblioteca-filter-key');
   const rowsWrap = tableBody;
   if (!rowsWrap) return;
   const a = api().library;
@@ -2808,17 +2821,29 @@ async function wireBiblioteca(): Promise<void> {
     if (!hasMore) return;
     busy = true;
     try {
+      const filters = normalizePhase62Filters({
+        search,
+        genre: genreSelect?.value,
+        bpm: bpmSelect?.value,
+        key: keySelect?.value,
+      });
       const opts: {
         readonly afterId?: string | null;
         readonly limit?: number;
         readonly search?: string;
+        readonly genres?: readonly string[];
+        readonly bpmMin?: number | null;
+        readonly bpmMax?: number | null;
+        readonly keys?: readonly string[];
       } = {
         afterId: reset ? null : afterId,
-        limit: reset ? 100 : 100,
+        limit: 100,
+        search: filters.search || undefined,
+        genres: filters.genres.length ? filters.genres : undefined,
+        bpmMin: filters.bpmMin,
+        bpmMax: filters.bpmMax,
+        keys: filters.keys.length ? filters.keys : undefined,
       };
-      if (search.length) {
-        Object.assign(opts as {}, { search });
-      }
       const page = await a.list!(opts);
       const items = page.items ?? [];
       renderRows(items, !reset);
@@ -2849,7 +2874,47 @@ async function wireBiblioteca(): Promise<void> {
       void load(true);
     }
   });
+  const reloadOnFilter = () => {
+    if (debounceT) clearTimeout(debounceT);
+    void load(true);
+  };
+  genreSelect?.addEventListener('change', reloadOnFilter);
+  bpmSelect?.addEventListener('change', reloadOnFilter);
+  keySelect?.addEventListener('change', reloadOnFilter);
   void load(true);
+
+  const playlistApi = api().playlist;
+  if (playlistsEl && playlistApi?.list) {
+    try {
+      const playlists = await playlistApi.list({ limit: 2000 });
+      playlistsEl.innerHTML = '';
+      if (!playlists.length) {
+        playlistsEl.innerHTML = '<span class="muted">No hay playlists disponibles.</span>';
+      } else {
+        for (const playlist of playlists) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'playlist-chip';
+          button.textContent = `${playlist.name} · ${playlist.trackIds.length}`;
+          button.addEventListener('click', async () => {
+            try {
+              const ids = typeof playlistApi.getTracks === 'function'
+                ? await playlistApi.getTracks({ id: playlist.id })
+                : playlist.trackIds;
+              if (playlistTracksEl) {
+                playlistTracksEl.textContent = `${playlist.name}: ${ids.length} tracks`;
+              }
+            } catch (error) {
+              if (playlistTracksEl) playlistTracksEl.textContent = error instanceof Error ? error.message : String(error);
+            }
+          });
+          playlistsEl.appendChild(button);
+        }
+      }
+    } catch (error) {
+      playlistsEl.textContent = error instanceof Error ? error.message : String(error);
+    }
+  }
 }
 
 async function wireNowPlaying(): Promise<void> {
@@ -2956,6 +3021,25 @@ async function wireSettings(): Promise<void> {
         copilotModel: cfg.copilotModel,
         copilotMaxTokens: cfg.copilotMaxTokens,
       });
+    }
+    if (p?.listValues) {
+      const [allValues, bpmValues, energyValues] = await Promise.all([
+        p.listValues(),
+        p.listValues({ dimension: 'bpm_range' }),
+        p.listValues({ dimension: 'energy_range' }),
+      ]);
+      const excludedGenres = allValues
+        .filter((entry) => entry.kind === 'excluded')
+        .map((entry) => entry.value);
+      const bpmMin = bpmValues.find((entry) => entry.kind === 'min')?.value ?? null;
+      const bpmMax = bpmValues.find((entry) => entry.kind === 'max')?.value ?? null;
+      const energyMin = energyValues.find((entry) => entry.kind === 'min')?.value ?? null;
+      const energyMax = energyValues.find((entry) => entry.kind === 'max')?.value ?? null;
+      if (input('set-excluded-genres') && excludedGenres.length) input('set-excluded-genres')!.value = excludedGenres.join(', ');
+      if (input('set-bpm-min') && bpmMin) input('set-bpm-min')!.value = bpmMin;
+      if (input('set-bpm-max') && bpmMax) input('set-bpm-max')!.value = bpmMax;
+      if (input('set-energy-min') && energyMin) input('set-energy-min')!.value = energyMin;
+      if (input('set-energy-max') && energyMax) input('set-energy-max')!.value = energyMax;
     }
   } catch (error) {
     console.warn('[shell] settings.get failed:', error);
@@ -3358,203 +3442,96 @@ async function wireNewRecommendationsView(): Promise<void> {
   const view = document.getElementById('view-recomendaciones');
   if (!view) return;
   const tbody = view.querySelector<HTMLTableSectionElement>('tbody');
-  if (!tbody) return;
-  const live = api().live;
-  const recommend = api().recommend;
   const library = api().library;
-  if (!library?.list) return;
+  const recommend = api().recommend;
+  const live = api().live;
+  if (!tbody || !library?.list || !recommend?.recommend || !live?.getNow) return;
 
-  const renderRows = (
-    items: ReadonlyArray<{
-      id: string;
-      title?: string | null;
-      artist?: string | null;
-      bpm?: number | null;
-      musicalKey?: string | null;
-      key?: string | null;
-      genre?: string | null;
-      energy01?: number | null;
-      energy?: number | null;
-      matchPct?: number;
-    }>,
-  ): void => {
+  const renderEmpty = (message: string): void => {
+    tbody.innerHTML = `<tr><td colspan="7" class="muted" style="padding:24px;text-align:center;">${shEscapeHtml(message)}</td></tr>`;
+  };
+
+  try {
+    const nowPlaying = await live.getNow();
+    if (!nowPlaying?.trackId) {
+      renderEmpty('Reproduce un track para generar recomendaciones reales.');
+      return;
+    }
+
+    const page = await library.list({ limit: 250 });
+    const candidates = (page.items ?? []).map((track) => ({
+      trackId: track.id,
+      title: track.title,
+      artist: track.artist,
+      genre: track.genre,
+      key: track.key,
+      bpm: track.bpm,
+      energy: track.energy ?? null,
+      rating: track.rating,
+      playCount: track.playCount,
+    }));
+
+    const current = candidates.find((candidate) => candidate.trackId === nowPlaying.trackId) ?? {
+      trackId: nowPlaying.trackId,
+      title: nowPlaying.title ?? null,
+      artist: nowPlaying.artist ?? null,
+      genre: null,
+      key: nowPlaying.musicalKey ?? null,
+      bpm: nowPlaying.bpm ?? null,
+      energy: null,
+      rating: null,
+      playCount: null,
+    };
+
+    const context = buildPhase62RecommendationContext({
+      deviceId: 'electron-shell',
+      currentTrack: current,
+      candidates,
+      request: `Siguiente track compatible con ${current.title ?? current.trackId}`,
+      limit: 6,
+    });
+
+    const result = await recommend.recommend(context);
+    const recommendationRows = result.recommendations.slice(0, context.limit);
+    if (!recommendationRows.length) {
+      renderEmpty('No hay tracks elegibles con las restricciones actuales.');
+      return;
+    }
+
+    const candidateById = new Map(candidates.map((candidate) => [candidate.trackId, candidate]));
     tbody.innerHTML = '';
-    items.slice(0, 6).forEach((t, idx) => {
-      const title = (t.title ?? 'Unknown').toString();
-      const artist = (t.artist ?? 'Various').toString();
-      const initials = (() => {
-        const first = title.trim().charAt(0);
-        const last = artist.trim().charAt(0);
-        return `${first}${last}`.toUpperCase() || '??';
-      })();
-      const colorPool = [
-        'linear-gradient(135deg,#22d3ee,#155e75)',
-        'linear-gradient(135deg,#a855f7,#312e81)',
-        'linear-gradient(135deg,#facc15,#78350f)',
-        'linear-gradient(135deg,#f97316,#7c2d12)',
-        'linear-gradient(135deg,#ef4444,#7f1d1d)',
-        'linear-gradient(135deg,#38bdf8,#075985)',
-      ];
-      const artBg = colorPool[idx % colorPool.length] ?? colorPool[0];
-      const bpm = typeof t.bpm === 'number' ? t.bpm : null;
-      const bpmTxt = bpm != null ? String(bpm) : '—';
-      const key = (t.musicalKey ?? t.key ?? '').toString();
-      const keyTxt = key || '—';
-      const matchRaw = typeof t.matchPct === 'number' ? t.matchPct : 94 - idx * 2;
-      const match = Math.max(62, Math.min(99, matchRaw));
-      const energy01 =
-        typeof t.energy01 === 'number'
-          ? t.energy01
-          : typeof t.energy === 'number'
-            ? t.energy / 10
-            : 0.45 + idx * 0.08;
-      const level =
-        energy01 < 0.4
-          ? 'wb-energy-low'
-          : energy01 > 0.65
-            ? 'wb-energy-high'
-            : 'wb-energy-mid';
-      const waveBars = Array.from(
-        { length: 6 },
-        (_, i) => {
-          const h = 20 + Math.round((0.25 + i * 0.1 + energy01 * (35 + i * 3)));
-          return `<i style="height:${Math.max(18, Math.min(95, h))}%"></i>`;
-        },
-      ).join('');
-      const matchColor =
-        match >= 92
-          ? 'var(--accent-green)'
-          : match >= 84
-            ? 'var(--accent-yellow)'
-            : 'var(--accent-orange)';
+    for (const recommendation of recommendationRows) {
+      const candidate = candidateById.get(recommendation.trackId);
+      if (!candidate) continue;
+      const title = candidate.title?.trim() || 'Untitled';
+      const artist = candidate.artist?.trim() || 'Unknown Artist';
+      const key = candidate.key?.trim() || '—';
+      const match = Math.max(0, Math.min(100, Math.round(recommendation.score * 100)));
+      const initials = `${title.charAt(0)}${artist.charAt(0)}`.toUpperCase() || '??';
       const tr = document.createElement('tr');
       tr.style.cursor = 'pointer';
       tr.innerHTML = `
-        <td>${idx + 1}</td>
-        <td><div class="track-mini"><span class="track-mini-art" style="background:${artBg};">${initials}</span><span class="track-mini-name">${shEscapeHtml(title)}</span></div></td>
-        <td>${shEscapeHtml(artist)}</td>
-        <td style="font-family:var(--font-mono);">${bpmTxt}</td>
-        <td><span class="pill-key">${shEscapeHtml(keyTxt)}</span></td>
-        <td style="color:${matchColor}; font-weight:600;">${match}%</td>
-        <td><span class="wave-bar ${level}">${waveBars}</span></td>`;
+        <td>${recommendation.rank}</td>
+        <td><div class="track-mini"><span class="track-mini-art">${shEscapeHtml(initials)}</span><span class="track-mini-name">${shEscapeHtml(title)}</span></div></td>
+        <td>${shEscapeHtml(artist)}<div class="muted" style="font-size:11px;margin-top:3px;">${shEscapeHtml(recommendation.reasons[0]?.detail ?? 'Compatible con el contexto actual.')}</div></td>
+        <td style="font-family:var(--font-mono);">${candidate.bpm ?? '—'}</td>
+        <td><span class="pill-key">${shEscapeHtml(key)}</span></td>
+        <td style="font-weight:600;">${match}%</td>
+        <td>${shEscapeHtml(recommendation.transition.keyRelation)}</td>`;
       tr.addEventListener('click', () => {
-        try {
-          void live?.pushManualTrack?.({
-            trackId: t.id || `rec-${idx}-${shHashCode(title + artist)}`,
-            title,
-            artist,
-            bpm,
-            musicalKey: keyTxt !== '—' ? keyTxt : null,
-            energyHint01: Number.isFinite(energy01) ? energy01 : null,
-          });
-        } catch (error) {
-          console.warn('[shell] rec pushManualTrack failed:', error);
-        }
+        void live.pushManualTrack?.({
+          trackId: candidate.trackId,
+          title: candidate.title,
+          artist: candidate.artist,
+          bpm: candidate.bpm,
+          musicalKey: candidate.key,
+          energyHint01: candidate.energy,
+        });
       });
       tbody.appendChild(tr);
-    });
-  };
-
-  const tryApiRecommend = async (): Promise<{
-    ok: boolean;
-    items?: ReadonlyArray<Parameters<typeof renderRows>[0][number]>;
-  }> => {
-    try {
-      if (typeof live?.recommend === 'function') {
-        const ctx = { limit: 6 };
-        const r = await live.recommend(ctx as never);
-        const rows = (r as unknown as { items?: ReadonlyArray<Record<string, unknown>> | null } | null | undefined)
-          ?.items;
-        if (Array.isArray(rows) && rows.length) {
-          const normalized = rows.map((row, i) => {
-            const eRaw = typeof row.energy01 === 'number'
-              ? row.energy01
-              : typeof row.energy === 'number'
-                ? row.energy
-                : null;
-            return {
-              id: String(row.id ?? row.trackId ?? `rec-${i}`),
-              title: typeof row.title === 'string' ? row.title : null,
-              artist: typeof row.artist === 'string' ? row.artist : null,
-              bpm: typeof row.bpm === 'number' ? row.bpm : null,
-              musicalKey: typeof (row.musicalKey ?? row.key) === 'string'
-                ? (row.musicalKey ?? row.key) as string
-                : null,
-              matchPct: typeof row.matchPct === 'number'
-                ? row.matchPct
-                : typeof row.score === 'number'
-                  ? Math.round(80 + row.score * 20)
-                  : 94 - i * 2,
-              energy01: eRaw,
-            };
-          });
-          return { ok: true, items: normalized };
-        }
-      }
-    } catch {
-      // try next
     }
-    try {
-      if (typeof recommend?.snapshot === 'function') {
-        const snap = await recommend.snapshot() as unknown as {
-          recentCandidates?: ReadonlyArray<Record<string, unknown>> | null;
-        } | null;
-        const rows = snap?.recentCandidates ?? null;
-        if (Array.isArray(rows) && rows.length) {
-          const normalized = rows.slice(0, 6).map((row, i) => {
-            const eRaw = typeof row.energy01 === 'number' ? row.energy01 : null;
-            return {
-              id: String(row.id ?? row.trackId ?? `rec-snap-${i}`),
-              title: typeof row.title === 'string' ? row.title : null,
-              artist: typeof row.artist === 'string' ? row.artist : null,
-              bpm: typeof row.bpm === 'number' ? row.bpm : null,
-              musicalKey: typeof (row.musicalKey ?? row.key) === 'string'
-                ? (row.musicalKey ?? row.key) as string
-                : null,
-              energy01: eRaw,
-              matchPct: 94 - i * 2,
-            };
-          });
-          return { ok: true, items: normalized };
-        }
-      }
-    } catch {
-      // next fallback
-    }
-    return { ok: false };
-  };
-
-  const libFallback = async (): Promise<void> => {
-    try {
-      const page = await library.list?.({ limit: 12 });
-      const pool = (page?.items ?? []).slice(0, 6);
-      if (pool.length) {
-        renderRows(
-          pool.map((t, i) => {
-            const eRaw = typeof t.energyHint01 === 'number' ? t.energyHint01 : null;
-            return {
-              id: t.id,
-              title: t.title ?? null,
-              artist: t.artist ?? null,
-              bpm: typeof t.bpm === 'number' ? t.bpm : null,
-              musicalKey: t.key ?? null,
-              genre: t.genre ?? null,
-              matchPct: 92 - i * 2,
-              energy01: eRaw,
-            };
-          }),
-        );
-      }
-    } catch (error) {
-      console.warn('[shell] rec library fallback failed:', error);
-    }
-  };
-
-  const rec = await tryApiRecommend();
-  if (rec.ok && Array.isArray(rec.items) && rec.items.length) {
-    renderRows(rec.items);
-  } else {
-    await libFallback();
+  } catch (error) {
+    renderEmpty(error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -3670,45 +3647,72 @@ async function wireNewHistorialView(): Promise<void> {
                 meta.textContent = `${date} · ${dur} · ${trackCount} tracks`;
               }
             }
+            const analysis = await api().recommend?.analyzeSet?.({
+              deviceId: 'electron-shell',
+              request: lastHistorialAnalyzePayload.request,
+              trackIds: ids,
+            });
+            if (!analysis) throw new Error('Set analysis unavailable.');
+
+            const fullTracks = await Promise.all(
+              ids.map(async (id) => api().library?.getById?.(id).catch(() => null) ?? null),
+            );
+            const validTracks = fullTracks.filter((track): track is NonNullable<typeof track> => track !== null);
+            const keyCounts = new Map<string, number>();
+            for (const track of validTracks) {
+              const key = track.metadata?.key?.trim();
+              if (key) keyCounts.set(key, (keyCounts.get(key) ?? 0) + 1);
+            }
+
             const metrics = view.ownerDocument.querySelectorAll<HTMLElement>(
               '#view-analisis .metrics-5-grid .metric-card',
             );
+            const averageEnergy = analysis.energyCurve.length
+              ? analysis.energyCurve.reduce((sum, value) => sum + value, 0) / analysis.energyCurve.length
+              : null;
+            const values: Array<number | string | null> = [
+              averageEnergy,
+              analysis.bpmRange.min != null && analysis.bpmRange.max != null
+                ? (analysis.bpmRange.min + analysis.bpmRange.max) / 2
+                : null,
+              [...keyCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null,
+              analysis.bpmRange.min != null && analysis.bpmRange.max != null
+                ? analysis.bpmRange.max - analysis.bpmRange.min
+                : null,
+              analysis.warnings.length ? Math.max(0, 10 - analysis.warnings.length) : 10,
+            ];
             metrics.forEach((card, i) => {
               const value = card.querySelector<HTMLElement>('.value');
               if (!value) return;
-              switch (i) {
-                case 0: {
-                  value.innerHTML = `${eNum.toFixed(1)} <span class="sub">/ 10</span>`;
-                  break;
-                }
-                case 1: {
-                  value.textContent = s.avgBpm != null
-                    ? (Math.round(s.avgBpm * 10) / 10).toFixed(1)
-                    : '—';
-                  break;
-                }
-                case 2: {
-                  value.innerHTML = `<span class="pill-key" style="font-size:17px;">${shEscapeHtml(keyTxt)}</span>`;
-                  break;
-                }
-                case 3: {
-                  value.textContent = Number.isFinite(s.avgBpm ?? NaN)
-                    ? String(Math.round(Math.random() * 20 * 10) / 10)
-                    : '—';
-                  break;
-                }
-                case 4: {
-                  const flow = Math.min(
-                    9.2,
-                    Math.max(6.1, 6 + (idx * 0.9) + Math.random()),
-                  );
-                  value.innerHTML = `${flow.toFixed(1)} <span class="sub">/ 10</span>`;
-                  break;
-                }
-                default:
-                  break;
+              const current = values[i];
+              if (i === 0 || i === 4) {
+                value.innerHTML = `${typeof current === 'number' ? current.toFixed(1) : '—'} <span class="sub">/ 10</span>`;
+              } else if (i === 2) {
+                value.innerHTML = `<span class="pill-key" style="font-size:17px;">${shEscapeHtml(typeof current === 'string' ? current : '—')}</span>`;
+              } else {
+                value.textContent = typeof current === 'number' ? current.toFixed(1) : '—';
               }
             });
+
+            const warningsEl = view.ownerDocument.querySelector<HTMLElement>('#set-analysis-warnings');
+            if (warningsEl) {
+              warningsEl.innerHTML = analysis.warnings.length
+                ? analysis.warnings.map((warning) => `<li>${shEscapeHtml(warning)}</li>`).join('')
+                : '<li>Sin advertencias.</li>';
+            }
+            const curveEl = view.ownerDocument.querySelector<HTMLElement>('#set-analysis-energy-curve');
+            if (curveEl) {
+              curveEl.innerHTML = analysis.energyCurve.length
+                ? analysis.energyCurve.map((energy) => `<i title="${energy.toFixed(1)}/10" style="height:${Math.max(4, Math.min(100, energy * 10))}%"></i>`).join('')
+                : '<span class="muted">Sin datos de energía.</span>';
+            }
+            const histogramEl = view.ownerDocument.querySelector<HTMLElement>('#set-analysis-key-histogram');
+            if (histogramEl) {
+              histogramEl.innerHTML = keyCounts.size
+                ? [...keyCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                    .map(([key, count]) => `<span><b>${shEscapeHtml(key)}</b> ${count}</span>`).join('')
+                : '<span class="muted">Sin datos de tonalidad.</span>';
+            }
             shActivateView('#view-analisis');
           } catch (error) {
             console.warn('[shell] Ver análisis click failed:', error);

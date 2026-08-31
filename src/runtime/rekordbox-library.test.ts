@@ -4,6 +4,8 @@ import {
 
 import assert from 'node:assert/strict';
 
+import type { RekordboxLibraryService } from './rekordbox-library.js';
+
 import {
   clampPageSize,
   normalizeSearch,
@@ -167,5 +169,22 @@ test(
           456,
       },
     );
+  },
+);
+test(
+  'PHASE62: advanced library filter options are represented by the public service contract',
+  () => {
+    const options: Parameters<RekordboxLibraryService['list']>[0] = {
+      genres: ['House'],
+      bpmMin: 120,
+      bpmMax: 128,
+      keys: ['8A'],
+    };
+    assert.deepEqual(options, {
+      genres: ['House'],
+      bpmMin: 120,
+      bpmMax: 128,
+      keys: ['8A'],
+    });
   },
 );
