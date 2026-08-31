@@ -51,7 +51,20 @@ import {
 
 import {
   createDJSyncCopilotActionController,
+  type DJSyncCopilotActionController,
 } from '../runtime/dj-sync-copilot-action-controller.js';
+
+import {
+  createRekordboxWritePort,
+} from '../rekordbox/rekordbox-write-port.js';
+
+import {
+  createRekordboxSafeActionExecutor,
+} from '../runtime/rekordbox-safe-action-executor.js';
+
+import {
+  createActionMapper,
+} from '../ai/actions/action-mapper.js';
 
 import {
   IPC_CHANNELS,
@@ -107,16 +120,9 @@ const library =
 const copilotUi =
   createDJSyncCopilotUiService();
 
-const copilotActions =
-  createDJSyncCopilotActionController({
-    executor: {
-      async execute() {
-        throw new Error(
-          'Real DJ action execution is deferred to Phase 32.',
-        );
-      },
-    },
-  });
+let copilotActions:
+  | DJSyncCopilotActionController
+  | null = null;
 
 let runtime:
   | DJSyncRuntime
@@ -315,6 +321,30 @@ app.whenReady().then(
         runtime,
       );
 
+    const rekordboxWritePort =
+      createRekordboxWritePort({
+        outputDir: app.getPath('userData') + '/rekordbox-operations',
+        listPlaylists: (args) => library.listPlaylists(args),
+        getTrack: (trackId) => library.getById(trackId),
+        productVersion: app.getVersion(),
+      });
+
+    const rekordboxSafeExecutor =
+      createRekordboxSafeActionExecutor(
+        rekordboxWritePort,
+      );
+    const actionMapper = createActionMapper();
+
+    copilotActions =
+      createDJSyncCopilotActionController({
+        executor: {
+          execute: (action) =>
+            rekordboxSafeExecutor.execute(
+              actionMapper.validate(action),
+            ),
+        },
+      });
+
     registerApplicationEvents();
 
     try {
@@ -322,6 +352,7 @@ app.whenReady().then(
         applicationState,
         library,
         getAppInfo,
+        rekordboxWritePort,
         userDataDir: app.getPath('userData'),
         getSenderWebContents() {
           if (mainWindow === null || mainWindow.isDestroyed()) return null;
@@ -340,6 +371,10 @@ app.whenReady().then(
     }
 
     try {
+      if (!copilotActions) {
+        throw new Error('Copilot action controller is unavailable.');
+      }
+
       registerCopilotUiIpc({
         chat: copilotUi,
         actions: copilotActions,
