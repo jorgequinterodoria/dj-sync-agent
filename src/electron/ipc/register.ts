@@ -71,6 +71,9 @@ import {
   recommendLive,
 } from '../../core/live/live-recommend.js';
 import type {
+  RekordboxWritePort,
+} from '../../rekordbox/rekordbox-write-port.js';
+import type {
   RecommendLiveInput,
 } from '../../core/live/live-recommend.js';
 
@@ -89,6 +92,8 @@ export interface RegisterIpcHandlersOptions {
 
   getSenderWebContents?:
     () => WebContents | null;
+
+  rekordboxWritePort?: RekordboxWritePort;
 }
 
 export function registerIpcHandlers(
@@ -818,6 +823,16 @@ export function registerIpcHandlers(
         console.warn('[ipc] playlist get tracks failed', error);
         return [];
       }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.rekordboxExportCollection,
+    async () => {
+      if (!options.rekordboxWritePort) {
+        throw new Error('Rekordbox write port is unavailable.');
+      }
+      return options.rekordboxWritePort.exportCollection();
     },
   );
 

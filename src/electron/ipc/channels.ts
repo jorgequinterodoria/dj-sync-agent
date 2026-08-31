@@ -131,6 +131,9 @@ export const IPC_CHANNELS = {
   playlistGetTracks:
     'playlist:get-tracks',
 
+  rekordboxExportCollection:
+    'rekordbox:export-collection',
+
   workspaceAggregateStats:
     'workspace:aggregate-stats',
 } as const;

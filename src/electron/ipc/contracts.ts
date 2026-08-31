@@ -45,6 +45,7 @@ import type {
 import type {
   RecommendLiveInput,
 } from '../../core/live/live-recommend.js';
+import type { RekordboxWriteResult } from '../../rekordbox/rekordbox-write-port.js';
 
 export type {
   UserSettings,
@@ -331,6 +332,10 @@ export interface DJSyncRendererApi {
     getTracks(args: {
       readonly id: string;
     }): Promise<readonly string[]>;
+  };
+
+  rekordbox: {
+    exportCollection(): Promise<RekordboxWriteResult>;
   };
 
   workspace: {

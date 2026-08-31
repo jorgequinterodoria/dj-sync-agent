@@ -140,6 +140,9 @@ const IPC_CHANNELS = {
 
   workspaceAggregateStats:
     'workspace:aggregate-stats',
+
+  rekordboxExportCollection: 
+    'rekordbox:export-collection',
 } as const;
 
 contextBridge.exposeInMainWorld(
@@ -524,6 +527,13 @@ contextBridge.exposeInMainWorld(
         ipcRenderer.invoke(
           IPC_CHANNELS.playlistGetTracks,
           args,
+        ),
+    },
+
+    rekordbox: {
+      exportCollection: () =>
+        ipcRenderer.invoke(
+          IPC_CHANNELS.rekordboxExportCollection,
         ),
     },
 
