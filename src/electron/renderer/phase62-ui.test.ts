@@ -22,6 +22,13 @@ test('PHASE62: library filters normalize genre, BPM range, key and search', () =
   });
   assert.equal(normalizePhase62Filters({ bpm: '129+' }).bpmMin, 129);
   assert.equal(normalizePhase62Filters({ bpm: 'BPM' }).bpmMin, null);
+  assert.deepEqual(normalizePhase62Filters({ genre: 'Todos los géneros', key: 'Key', bpm: 'BPM' }), {
+    search: '',
+    genres: [],
+    keys: [],
+    bpmMin: null,
+    bpmMax: null,
+  });
 });
 
 test('PHASE62: recommendation mapping is bounded and deterministic', () => {

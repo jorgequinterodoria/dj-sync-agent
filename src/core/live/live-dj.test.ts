@@ -50,14 +50,11 @@ void test('F56.1 ManualNowPlayingSource pushTick valid elapsed + bpm energy', ()
   assert.equal(t2.elapsedMs, clampElapsed(90_000 + 4_000_000, 240_000));
 });
 
-void test('F56.2 RekordboxActiveCuePollingSource stub devuelve null sin masterDbPath (safe readonly)', async () => {
-  const src = new RekordboxActiveCuePollingSource();
-  assert.equal(src.masterDbPath, null);
-  const curr = await src.getCurrent();
-  assert.equal(curr, null);
-  const withPath = new RekordboxActiveCuePollingSource({ masterDbPath: '/tmp/fake.db' });
-  const curr2 = await withPath.getCurrent();
-  assert.equal(curr2, null, 'stub retorna null hasta que activecue real sea implementado, sin writes');
+void test('F56.2 RekordboxActiveCuePollingSource conserva la frontera readonly y no depende de master.db', async () => {
+  const src = new RekordboxActiveCuePollingSource({ masterDbPath: '/tmp/fake.db' });
+  assert.equal(src.masterDbPath, '/tmp/fake.db');
+  assert.equal(src.sourceType, 'rekordbox_active_cue_polling');
+  await src.close();
 });
 
 void test('F57.1 LiveDJContext tick incrementa elapsed + played track count', async () => {
@@ -231,3 +228,53 @@ void clampElapsed;
 void deriveBpmRangeFromSlot;
 void buildLiveSlotConstraints;
 void buildCurrentTrackCandidateFromLiveNowPlaying;
+
+void test('F63.1 PRO DJ LINK decodifica estado real de CDJ y flags de reproducción', async () => {
+  const { decodeCdjStatusPacket } = await import('./pro-dj-link-now-playing.js');
+  const packet = Buffer.alloc(0x94, 0);
+  Buffer.from('5173707431576d4a4f4c', 'hex').copy(packet, 0);
+  packet[0x0a] = 0x0a;
+  packet[0x21] = 3;
+  packet.writeUInt32BE(1234, 0x2c);
+  packet[0x28] = 3;
+  packet[0x29] = 2;
+  packet[0x2a] = 1;
+  packet[0x89] = 0x78;
+  packet.writeUInt16BE(12800, 0x92);
+  const status = decodeCdjStatusPacket(packet, '2026-08-31T12:00:00.000Z');
+  assert.ok(status);
+  assert.equal(status.deviceNumber, 3);
+  assert.equal(status.trackId, 1234);
+  assert.equal(status.sourcePlayer, 3);
+  assert.equal(status.sourceSlot, 2);
+  assert.equal(status.bpm, 128);
+  assert.equal(status.playing, true);
+  assert.equal(status.master, true);
+  assert.equal(status.sync, true);
+  assert.equal(status.onAir, true);
+});
+
+void test('F63.2 PRO DJ LINK decodifica posición precisa y calcula elapsed/duration', async () => {
+  const { decodePrecisePositionPacket } = await import('./pro-dj-link-now-playing.js');
+  const packet = Buffer.alloc(0x3c, 0);
+  Buffer.from('5173707431576d4a4f4c', 'hex').copy(packet, 0);
+  packet[0x0a] = 0x0b;
+  packet[0x21] = 3;
+  packet.writeUInt32BE(286, 0x24);
+  packet.writeUInt32BE(29565, 0x28);
+  packet.writeInt32BE(0, 0x2c);
+  packet.writeUInt32BE(10000, 0x38);
+  const position = decodePrecisePositionPacket(packet, '2026-08-31T12:00:00.000Z');
+  assert.ok(position);
+  assert.equal(position.deviceNumber, 3);
+  assert.equal(position.trackLengthSeconds, 286);
+  assert.equal(position.playbackPositionMs, 29565);
+  assert.equal(position.bpm, 100);
+});
+
+void test('F63.3 RekordboxActiveCuePollingSource mantiene frontera sin SQL ni writes a master.db', async () => {
+  const src = new RekordboxActiveCuePollingSource({ masterDbPath: '/tmp/master.db' });
+  assert.equal(src.masterDbPath, '/tmp/master.db');
+  assert.equal(src.pollingIntervalMs, 500);
+  await src.close();
+});
