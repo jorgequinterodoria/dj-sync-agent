@@ -22,3 +22,5 @@ export {
   toDJBehaviorProfileRow,
   unpackDJBehaviorProfile,
 } from './codec.js';
+
+export { SQLiteCopilotDbStore } from './sqlite-store.js';

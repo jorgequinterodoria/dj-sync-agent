@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import {
   ipcMain,
   type IpcMainInvokeEvent,
@@ -52,11 +53,8 @@ import {
 } from '../../runtime/dj-sync-set-builder-service.js';
 
 import {
-  InMemoryCopilotDbStore,
-} from '../../core/local-store/in-memory-store.js';
-import {
-  JsonFileCopilotDbStore,
-} from '../../core/local-store/json-file-store.js';
+  SQLiteCopilotDbStore,
+} from '../../core/local-store/sqlite-store.js';
 import type {
   DJPreferenceDimension,
   DJPreferenceKind,
@@ -512,17 +510,9 @@ export function registerIpcHandlers(
     },
   );
 
-  const copilotDb: InMemoryCopilotDbStore = (() => {
-    try {
-      return new JsonFileCopilotDbStore(options.userDataDir);
-    } catch (error) {
-      console.warn(
-        '[register] JsonFileCopilotDbStore unavailable, degraded to InMemory:',
-        error instanceof Error ? error.message : String(error),
-      );
-      return new InMemoryCopilotDbStore();
-    }
-  })();
+  const copilotDb = new SQLiteCopilotDbStore(
+    join(options.userDataDir, 'copilot.db'),
+  );
   const DEFAULT_DEVICE_ID = 'electron-main';
 
   ipcMain.handle(
