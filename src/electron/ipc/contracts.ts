@@ -374,4 +374,5 @@ export type {
   LibraryPage,
   LibraryTrackSummary,
   NormalizedTrack,
+  SetIntelligenceResult,
 };

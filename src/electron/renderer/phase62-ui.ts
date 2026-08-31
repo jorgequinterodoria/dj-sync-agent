@@ -83,8 +83,10 @@ export function normalizePhase62Filters(input: {
   const bpm = (input.bpm ?? '').trim();
   let bpmMin: number | null = null;
   let bpmMax: number | null = null;
-  if (/^\d+\s*-\s*\d+$/.test(bpm)) {
-    const [a, b] = bpm.split('-').map((v) => Number(v.trim()));
+    if (/^\d+\s*-\s*\d+$/.test(bpm)) {
+    const [aRaw, bRaw] = bpm.split('-').map((v) => Number(v.trim()));
+    const a = aRaw ?? NaN;
+    const b = bRaw ?? NaN;
     bpmMin = Number.isFinite(a) ? a : null;
     bpmMax = Number.isFinite(b) ? b : null;
   } else if (/^\d+\+$/.test(bpm)) {

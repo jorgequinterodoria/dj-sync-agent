@@ -3,7 +3,9 @@ import type {
   NormalizedTrack,
   LibraryPage,
   LibraryTrackSummary,
+  SetIntelligenceResult,
 } from '../ipc/contracts.js';
+import type { RecommendationResult } from '../../recommendations/recommendation-types.js';
 
 import { bindNewSidebarNav } from './production-ui-entry.js';
 import {
@@ -2470,6 +2472,7 @@ type LibraryItemLite = {
   readonly key: string | null;
   readonly energy?: number | null;
   readonly energyHint01?: number | null;
+    readonly playCount: number | null;
 };
 
 type UserSettingsLite = {
@@ -2604,12 +2607,34 @@ type LightApiShape = {
     }) => Promise<unknown>;
     readonly recommend?: (input: unknown) => Promise<unknown>;
   };
-  readonly recommend?: {
+    readonly recommend?: {
     readonly snapshot?: () => Promise<{
       readonly configured: boolean;
       readonly recentCandidates?: ReadonlyArray<Record<string, unknown>> | null;
     }>;
-    readonly recommend?: (ctx: unknown) => Promise<unknown>;
+    readonly recommend?: (ctx: unknown) => Promise<RecommendationResult>;
+    readonly analyzeSet?: (input: unknown) => Promise<SetIntelligenceResult>;
+  };
+    readonly playlist?: {
+    readonly list?: (
+      args?: { readonly search?: string; readonly limit?: number },
+    ) => Promise<
+      readonly {
+        readonly id: string;
+        readonly name: string;
+        readonly trackIds: readonly string[];
+      }[]
+    >;
+    readonly get?: (
+      args: { readonly id: string },
+    ) => Promise<{
+      readonly id: string;
+      readonly name: string;
+      readonly trackIds: readonly string[];
+    } | null>;
+    readonly getTracks?: (
+      args: { readonly id: string },
+    ) => Promise<readonly string[]>;
   };
   readonly copilot?: {
     readonly status?: () => Promise<unknown>;
@@ -2823,11 +2848,11 @@ async function wireBiblioteca(): Promise<void> {
     try {
       const filters = normalizePhase62Filters({
         search,
-        genre: genreSelect?.value,
-        bpm: bpmSelect?.value,
-        key: keySelect?.value,
+        genre: genreSelect?.value ?? null,
+        bpm: bpmSelect?.value ?? null,
+        key: keySelect?.value ?? null,
       });
-      const opts: {
+            const opts: {
         readonly afterId?: string | null;
         readonly limit?: number;
         readonly search?: string;
@@ -2838,11 +2863,11 @@ async function wireBiblioteca(): Promise<void> {
       } = {
         afterId: reset ? null : afterId,
         limit: 100,
-        search: filters.search || undefined,
-        genres: filters.genres.length ? filters.genres : undefined,
+        ...(filters.search ? { search: filters.search } : {}),
+        ...(filters.genres.length ? { genres: filters.genres } : {}),
         bpmMin: filters.bpmMin,
         bpmMax: filters.bpmMax,
-        keys: filters.keys.length ? filters.keys : undefined,
+        ...(filters.keys.length ? { keys: filters.keys } : {}),
       };
       const page = await a.list!(opts);
       const items = page.items ?? [];
