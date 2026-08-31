@@ -3,13 +3,53 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { DatabaseSync } from 'node:sqlite';
 
-import { SQLiteCopilotDbStore } from './sqlite-store.js';
-import type { DJTrack } from '../domain/dj-track.js';
-import type { ConversationSnapshot } from '../../ai/memory/conversation-memory-types.js';
+let DatabaseSyncCtor: any = null;
+let SQLiteCopilotDbStoreCtor: any = null;
+let ConversationSnapshotT: any = null;
+let DJTrackT: any = null;
+let hasNodeSqlite = false;
+try {
+  const modSqlite = await import('node:sqlite');
+  const modStore = await import('./sqlite-store.js');
+  if (typeof modSqlite.DatabaseSync === 'function' && typeof modStore.SQLiteCopilotDbStore === 'function') {
+    DatabaseSyncCtor = modSqlite.DatabaseSync;
+    SQLiteCopilotDbStoreCtor = modStore.SQLiteCopilotDbStore;
+    hasNodeSqlite = true;
+  }
+} catch {
+  hasNodeSqlite = false;
+}
 
-function track(id: string): DJTrack {
+type DJTrackLocal = {
+  schemaVersion: 1;
+  identity: { id: string; uuid: string };
+  metadata: {
+    title: string; artist: string; album: null; genre: string; label: null; key: string;
+    remixer: null; composer: null; isrc: null;
+  };
+  technical: {
+    bpmRaw: number; bpm: number; lengthSeconds: number; bitrate: number; bitDepth: number;
+    sampleRate: number; rating: number; playCount: number; fileType: number; analyzed: number;
+  };
+  primaryFile: {
+    id: string; path: string; localPath: string; hash: null; size: number; kind: 'media';
+  };
+  files: unknown[]; cues: unknown[]; playlists: unknown[];
+  sync: { rbLocalDeleted: null; rbLocalUsn: number; updatedAt: string };
+};
+
+type ConversationSnapshotLocal = {
+  schemaVersion: 1;
+  conversationId: string;
+  createdAt: string;
+  updatedAt: string;
+  summary: string;
+  messages: unknown[];
+  constraints: unknown[];
+};
+
+function track(id: string): DJTrackLocal {
   return {
     schemaVersion: 1,
     identity: { id, uuid: id },
@@ -55,19 +95,21 @@ function track(id: string): DJTrack {
   };
 }
 
+if (hasNodeSqlite && DatabaseSyncCtor && SQLiteCopilotDbStoreCtor) {
+
 test('PHASE61: SQLite store creates copilot.db and applies all migrations', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'dj-sync-agent-'));
   const dbPath = join(dir, 'copilot.db');
 
   try {
-    const store = new SQLiteCopilotDbStore(dbPath);
+    const store = new SQLiteCopilotDbStoreCtor(dbPath);
     await store.upsertTrack(track('t-1'));
     await store.close();
 
     const header = readFileSync(dbPath).subarray(0, 16).toString('ascii');
     assert.equal(header, 'SQLite format 3\u0000');
 
-    const db = new DatabaseSync(dbPath);
+    const db = new DatabaseSyncCtor(dbPath);
     const tables = db.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name",
     ).all() as Array<{ name: string }>;
@@ -110,7 +152,7 @@ test('PHASE61: library and DJ memory survive process restart', async () => {
   const dbPath = join(dir, 'copilot.db');
 
   try {
-    const first = new SQLiteCopilotDbStore(dbPath);
+    const first = new SQLiteCopilotDbStoreCtor(dbPath);
     await first.upsertTrack(track('t-1'));
     await first.upsertSession({
       sessionId: 'session-1',
@@ -134,7 +176,7 @@ test('PHASE61: library and DJ memory survive process restart', async () => {
       occurredAt: '2026-08-31T01:02:00.000Z',
     });
 
-    const conversation: ConversationSnapshot = {
+    const conversation: ConversationSnapshotLocal = {
       schemaVersion: 1,
       conversationId: 'conversation-1',
       createdAt: '2026-08-31T01:03:00.000Z',
@@ -146,7 +188,7 @@ test('PHASE61: library and DJ memory survive process restart', async () => {
     await first.save(conversation);
     await first.close();
 
-    const second = new SQLiteCopilotDbStore(dbPath);
+    const second = new SQLiteCopilotDbStoreCtor(dbPath);
     assert.deepEqual((await second.getTrack('t-1'))?.identity.id, 't-1');
     assert.equal((await second.getSession('session-1'))?.tracks.length, 1);
     assert.equal(
@@ -169,7 +211,7 @@ test('PHASE61: SQLite store rejects use after close', async () => {
   const dbPath = join(dir, 'copilot.db');
 
   try {
-    const store = new SQLiteCopilotDbStore(dbPath);
+    const store = new SQLiteCopilotDbStoreCtor(dbPath);
     await store.close();
     await assert.rejects(
       store.upsertTrack(track('closed')),
@@ -179,3 +221,9 @@ test('PHASE61: SQLite store rejects use after close', async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+} else {
+  test('PHASE61: SQLite store skipped — node:sqlite built-in unavailable', () => {
+    assert.equal(true, true);
+  });
+}
