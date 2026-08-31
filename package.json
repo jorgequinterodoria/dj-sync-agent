@@ -38,7 +38,8 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "build:clean": "rm -rf dist tsconfig.build.tsbuildinfo 2>/dev/null; tsc -p tsconfig.build.json",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "production:check": "pnpm typecheck && pnpm test && pnpm build && pnpm electron:build && pnpm exec tsx scripts/verify-release-artifacts.ts && git diff --check"
   },
   "dependencies": {
     "@journeyapps/sqlcipher": "^6.0.0",

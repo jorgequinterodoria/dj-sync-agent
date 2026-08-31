@@ -1,6 +1,10 @@
 import { access, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 
+import {
+  validateProductionRelease,
+} from '../src/electron/production-release.js';
+
 const REQUIRED = [
   'dist/electron/main.js',
   'dist/electron/preload.cjs',
@@ -55,17 +59,16 @@ async function main(): Promise<void> {
     }
   }
 
-  if (artifacts.length === 0) {
-    throw new Error(
-      'No non-empty release artifacts were produced.',
-    );
-  }
+  const result = validateProductionRelease({
+    requiredBuildArtifacts: REQUIRED,
+    releaseArtifacts: artifacts,
+  });
 
   console.log(
     JSON.stringify(
       {
-        ok: true,
-        artifacts,
+        ok: result.ok,
+        artifacts: result.releaseArtifacts,
       },
       null,
       2,
