@@ -78,17 +78,17 @@ export function normalizePhase62Filters(input: {
   readonly key?: string | null;
 }): Phase62LibraryFilters {
   const search = (input.search ?? '').normalize('NFC').trim().replace(/\s+/g, ' ');
-  const genre = (input.genre ?? '').trim();
-  const key = (input.key ?? '').trim();
+  const genreValue = (input.genre ?? '').trim();
+  const keyValue = (input.key ?? '').trim();
+  const genre = genreValue && genreValue !== 'Todos los géneros' ? genreValue : '';
+  const key = keyValue && keyValue !== 'Key' ? keyValue : '';
   const bpm = (input.bpm ?? '').trim();
   let bpmMin: number | null = null;
   let bpmMax: number | null = null;
-    if (/^\d+\s*-\s*\d+$/.test(bpm)) {
-    const [aRaw, bRaw] = bpm.split('-').map((v) => Number(v.trim()));
-    const a = aRaw ?? NaN;
-    const b = bRaw ?? NaN;
-    bpmMin = Number.isFinite(a) ? a : null;
-    bpmMax = Number.isFinite(b) ? b : null;
+  if (/^\d+\s*-\s*\d+$/.test(bpm)) {
+    const [a, b] = bpm.split('-').map((v) => Number(v.trim()));
+    bpmMin = Number.isFinite(a) && a !== undefined ? a : null;
+    bpmMax = Number.isFinite(b) && b !== undefined ? b : null;
   } else if (/^\d+\+$/.test(bpm)) {
     bpmMin = Number(bpm.slice(0, -1));
   }

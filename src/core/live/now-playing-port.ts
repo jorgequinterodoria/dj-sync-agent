@@ -119,34 +119,31 @@ export class ManualNowPlayingSource implements NowPlayingSourcePort {
   }
 }
 
+
+export function clampElapsed(elapsedMs: number, durationMs: number | null): number {
+  if (durationMs == null) return Math.max(0, Math.trunc(elapsedMs));
+  return Math.max(0, Math.min(Math.trunc(durationMs), Math.trunc(elapsedMs)));
+}
+
+export { ProDjLinkNowPlayingSource } from './pro-dj-link-now-playing.js';
+
 export interface RekordboxActiveCuePollingSourceOptions {
   masterDbPath?: string | null;
   pollingIntervalMs?: number;
   deviceId?: string;
 }
 
-export class RekordboxActiveCuePollingSource implements NowPlayingSourcePort {
-  public readonly name = 'RekordboxActiveCuePollingSource';
-  public readonly sourceType = 'rekordbox_active_cue_polling' as const;
+import { ProDjLinkNowPlayingSource } from './pro-dj-link-now-playing.js';
+
+export class RekordboxActiveCuePollingSource extends ProDjLinkNowPlayingSource {
+  public readonly name: ProDjLinkNowPlayingSource['name'] = 'ProDjLinkNowPlayingSource';
   public readonly masterDbPath: string | null;
   public readonly pollingIntervalMs: number;
 
   constructor(options: RekordboxActiveCuePollingSourceOptions = {}) {
+    super({ announceIntervalMs: options.pollingIntervalMs ?? DEFAULT_NOW_PLAYING_POLLING_INTERVAL_MS });
     this.masterDbPath = options.masterDbPath ?? null;
     this.pollingIntervalMs = options.pollingIntervalMs ?? DEFAULT_NOW_PLAYING_POLLING_INTERVAL_MS;
-    // Hard constraint: readonly. No writes allowed. Zero SQL executions in this stub.
-    // Real implementation swaps here later; current adapter returns null until master.db readonly path is approved.
     void options.deviceId;
   }
-
-  public async getCurrent(): Promise<LiveNowPlaying | null> {
-    // Stub: no-op safe. Never writes. If masterDbPath is missing, return null deterministically.
-    if (!this.masterDbPath) return null;
-    return null; // reserved: implement ActiveCue read via better-sqlite3 readonly = true here when driver added.
-  }
-}
-
-export function clampElapsed(elapsedMs: number, durationMs: number | null): number {
-  if (durationMs == null) return Math.max(0, Math.trunc(elapsedMs));
-  return Math.max(0, Math.min(Math.trunc(durationMs), Math.trunc(elapsedMs)));
 }

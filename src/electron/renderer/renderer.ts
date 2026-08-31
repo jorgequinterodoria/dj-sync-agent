@@ -5,9 +5,9 @@ import type {
   LibraryTrackSummary,
   SetIntelligenceResult,
 } from '../ipc/contracts.js';
-import type { RecommendationResult } from '../../recommendations/recommendation-types.js';
 
 import { bindNewSidebarNav } from './production-ui-entry.js';
+import type { RecommendationResult } from '../../recommendations/recommendation-types.js';
 import {
   buildPhase62RecommendationContext,
   normalizePhase62Filters,
@@ -2472,7 +2472,7 @@ type LibraryItemLite = {
   readonly key: string | null;
   readonly energy?: number | null;
   readonly energyHint01?: number | null;
-    readonly playCount: number | null;
+  readonly playCount: number | null;
 };
 
 type UserSettingsLite = {
@@ -2607,34 +2607,18 @@ type LightApiShape = {
     }) => Promise<unknown>;
     readonly recommend?: (input: unknown) => Promise<unknown>;
   };
-    readonly recommend?: {
+  readonly playlist?: {
+    readonly list?: (args?: { readonly search?: string; readonly limit?: number }) => Promise<readonly { readonly id: string; readonly name: string; readonly trackIds: readonly string[] }[]>;
+    readonly get?: (args: { readonly id: string }) => Promise<{ readonly id: string; readonly name: string; readonly trackIds: readonly string[] } | null>;
+    readonly getTracks?: (args: { readonly id: string }) => Promise<readonly string[]>;
+  };
+  readonly recommend?: {
     readonly snapshot?: () => Promise<{
       readonly configured: boolean;
       readonly recentCandidates?: ReadonlyArray<Record<string, unknown>> | null;
     }>;
     readonly recommend?: (ctx: unknown) => Promise<RecommendationResult>;
     readonly analyzeSet?: (input: unknown) => Promise<SetIntelligenceResult>;
-  };
-    readonly playlist?: {
-    readonly list?: (
-      args?: { readonly search?: string; readonly limit?: number },
-    ) => Promise<
-      readonly {
-        readonly id: string;
-        readonly name: string;
-        readonly trackIds: readonly string[];
-      }[]
-    >;
-    readonly get?: (
-      args: { readonly id: string },
-    ) => Promise<{
-      readonly id: string;
-      readonly name: string;
-      readonly trackIds: readonly string[];
-    } | null>;
-    readonly getTracks?: (
-      args: { readonly id: string },
-    ) => Promise<readonly string[]>;
   };
   readonly copilot?: {
     readonly status?: () => Promise<unknown>;
@@ -2852,7 +2836,7 @@ async function wireBiblioteca(): Promise<void> {
         bpm: bpmSelect?.value ?? null,
         key: keySelect?.value ?? null,
       });
-            const opts: {
+      const opts: {
         readonly afterId?: string | null;
         readonly limit?: number;
         readonly search?: string;

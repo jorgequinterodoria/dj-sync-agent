@@ -225,6 +225,24 @@ contextBridge.exposeInMainWorld(
 
             search?:
               string;
+
+            genres?:
+              | readonly string[]
+              | string
+              | null;
+
+            bpmMin?:
+              number
+              | null;
+
+            bpmMax?:
+              number
+              | null;
+
+            keys?:
+              | readonly string[]
+              | string
+              | null;
           },
         ) =>
           ipcRenderer.invoke(
