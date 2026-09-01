@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import { scorePersonalizedCandidate } from '../personalization/personalization-v2.js';
+
 import {
   keyRelation,
 } from './key-compatibility.js';
@@ -109,6 +111,7 @@ function scoreCandidate(
   candidate: TrackRecommendationCandidate,
   constraints: RecommendationConstraints,
   recentArtistNames: string[],
+  personalizationProfile: import('../personalization/personalization-types.js').PersonalizedTrackProfile | null | undefined,
 ): TrackRecommendation {
   const bpm = bpmScore(current.bpm, candidate.bpm);
   const energy = energyScore(current.energy, candidate.energy);
@@ -118,6 +121,7 @@ function scoreCandidate(
   const semantic = candidate.semanticSimilarity == null ? 0.5 : clamp01(candidate.semanticSimilarity);
   const rating = ratingScore(candidate.rating);
   const engagement = engagementScore(candidate.playCount);
+  const personalization = scorePersonalizedCandidate(personalizationProfile, candidate);
   const recentArtist = normalized(candidate.artist) && recentArtistNames.map(normalized).includes(normalized(candidate.artist));
 
   const base =
@@ -127,7 +131,7 @@ function scoreCandidate(
     genre * 10 +
     semantic * 15 +
     rating * 8 +
-    engagement * 7;
+    engagement * 7 + personalization.score * 10;
 
   const historyPenalty = recentArtist ? 15 : 0;
   const score = clamp100(base - historyPenalty);
@@ -141,6 +145,7 @@ function scoreCandidate(
     reason('semantic_similarity', semantic * 100, `Semantic similarity score ${(semantic * 100).toFixed(0)}.`),
     reason('rating', rating * 100, `Rating contribution ${(rating * 100).toFixed(0)}.`),
     reason('engagement', engagement * 100, `Engagement contribution ${(engagement * 100).toFixed(0)}.`),
+    reason('artist_diversity', personalization.score * 100, personalization.detail),
   ];
   if (recentArtist) reasons.push(reason('history_penalty', 15, 'Artist appeared in recent history.'));
 
@@ -197,7 +202,7 @@ export function createRecommendationEngine(options: RecommendationEngineOptions 
             .filter((value): value is string => value !== null);
           return !recentArtists.includes(artist);
         })
-        .map((candidate) => scoreCandidate(context.currentTrack, candidate, constraints, recentArtistNames))
+        .map((candidate) => scoreCandidate(context.currentTrack, candidate, constraints, recentArtistNames, context.personalizationProfile))
         .filter((item) => item.hardConstraintPass)
         .sort((a, b) => b.score - a.score || a.trackId.localeCompare(b.trackId));
 
