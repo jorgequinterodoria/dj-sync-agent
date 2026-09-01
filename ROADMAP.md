@@ -314,7 +314,7 @@ Lista detallada de **gap reales** encontrados al conectar runtime core al shell 
 
 ## FASE 66 — MUSICAL INTELLIGENCE V2
 
-**Estado:** 🟡 Implementación inicial completada; pendiente de validación local.
+**Estado:** ✅ Completada. Typecheck, suite y Electron build validados localmente por el proyecto.
 
 ### Alcance
 
@@ -346,3 +346,51 @@ pnpm electron:build
 ```
 
 La Fase 66 no se considera cerrada hasta que los tres gates pasen.
+
+
+## FASE 67 — PERSONALIZACIÓN DJ + OPTIMIZACIÓN CONTINUA
+
+**Estado:** 🟡 Implementación completada; pendiente de validación local.
+
+### Alcance
+
+- Overlay determinista de personalización sobre RecommendationEngine.
+- Preferencias por género, artista, BPM, energía y key.
+- Penalización de preferencias negativas sin sustituir hard constraints.
+- Confidence de personalización.
+- Ranking reproducible y explainable.
+- Tests de personalización y ranking.
+
+### Archivos
+
+- `src/personalization/personalization-v2.ts`
+- `src/personalization/personalization-v2.test.ts`
+- `src/recommendations/recommendation-types.ts`
+- `src/recommendations/recommendation-engine.ts`
+- `src/recommendations/recommendation-engine.test.ts`
+
+### Arquitectura
+
+```text
+Hard Constraints
+      ↓
+Candidate Generation
+      ↓
+Deterministic Scoring
+      ↓
+Personalization V2
+      ↓
+Ranking
+      ↓
+Explanation
+```
+
+### Gate
+
+```text
+pnpm typecheck
+pnpm exec node --import tsx --test "src/**/*.test.ts"
+pnpm electron:build
+```
+
+La Fase 67 no se considera cerrada hasta que los tres gates pasen.

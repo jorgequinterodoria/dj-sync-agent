@@ -1,3 +1,5 @@
+import type { PersonalizedTrackProfile } from '../personalization/personalization-types.js';
+
 export const RECOMMENDATION_ENGINE_VERSION = '1.0.0' as const;
 export const RECOMMENDATION_SCHEMA_VERSION = 1 as const;
 
@@ -51,6 +53,7 @@ export interface RecommendationContext {
   recentTrackIds?: string[];
   recentArtistNames?: string[];
   limit?: number;
+  personalizationProfile?: PersonalizedTrackProfile | null;
 }
 
 export interface RecommendationReason {

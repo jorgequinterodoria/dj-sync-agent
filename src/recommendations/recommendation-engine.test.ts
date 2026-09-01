@@ -77,3 +77,21 @@ test('set intelligence detects repetition and range warnings', () => {
   assert.equal(result.bpmRange.max, 135);
   assert.ok(result.warnings.length >= 2);
 });
+
+
+test('F67 recommendation ranking applies deterministic personalization overlay', () => {
+  const engine = createRecommendationEngine({ id: () => 'rec-67', now: () => '2026-08-31T00:00:00Z' });
+  const result = engine.recommend({
+    deviceId: 'd1', request: 'next', currentTrack: { trackId: 'current', bpm: 126, genre: 'house', energy: 0.75 },
+    candidates: [
+      { trackId: 'generic', bpm: 126, genre: 'techno', energy: 0.75, artist: 'other' },
+      { trackId: 'preferred', bpm: 126, genre: 'house', energy: 0.78, artist: 'artist a', key: '8A' },
+    ],
+    personalizationProfile: {
+      schemaVersion: 1, engineVersion: '1.0.0', computedAt: '2026-08-31T00:00:00Z', deviceId: 'd1',
+      profile: { preferredGenres: ['house'], avoidedGenres: ['techno'], preferredBpmMin: 124, preferredBpmMax: 128, preferredEnergyMin: 0.7, preferredEnergyMax: 0.85, preferredKeys: ['8a'], preferredArtists: ['artist a'], avoidedArtists: [] },
+      confidence: { genre: 90, bpm: 90, energy: 90, key: 80, artist: 90 }, evidence: { totalEvents: 10, positiveEvents: 8, negativeEvents: 2 },
+    },
+  });
+  assert.equal(result.recommendations[0]?.trackId, 'preferred');
+});
