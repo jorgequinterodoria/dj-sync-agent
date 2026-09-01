@@ -147,3 +147,5 @@ export class RekordboxActiveCuePollingSource extends ProDjLinkNowPlayingSource {
     void options.deviceId;
   }
 }
+
+export { HybridNowPlayingSource } from './hybrid-now-playing-source.js';

@@ -134,6 +134,11 @@ let applicationState:
   | null =
   null;
 
+let ipcCleanup:
+  | (() => Promise<void>)
+  | null =
+  null;
+
 function getAppInfo(): AppInfo {
   return {
     name:
@@ -348,7 +353,7 @@ app.whenReady().then(
     registerApplicationEvents();
 
     try {
-      registerIpcHandlers({
+      ipcCleanup = registerIpcHandlers({
         applicationState,
         library,
         getAppInfo,
@@ -449,6 +454,15 @@ app.on(
     applicationState?.stopPolling();
 
     void (async () => {
+      try {
+        await ipcCleanup?.();
+        ipcCleanup = null;
+      } catch (error) {
+        console.error(
+          `DJ Sync IPC cleanup failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+
       try {
         await applicationState?.stop();
       } catch (error) {

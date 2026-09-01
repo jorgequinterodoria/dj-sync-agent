@@ -65,6 +65,9 @@ import {
   ManualNowPlayingSource,
 } from '../../core/live/now-playing-port.js';
 import {
+  HybridNowPlayingSource,
+} from '../../core/live/hybrid-now-playing-source.js';
+import {
   LiveDJContextService,
 } from '../../core/live/live-dj-context-state.js';
 import {
@@ -99,7 +102,7 @@ export interface RegisterIpcHandlersOptions {
 export function registerIpcHandlers(
   options:
     RegisterIpcHandlersOptions,
-): void {
+): (() => Promise<void>) {
   let audioService:
     | ReturnType<
       typeof createDefaultDJSyncAudioApplicationService
@@ -643,13 +646,14 @@ export function registerIpcHandlers(
   );
 
   const liveManualSource = new ManualNowPlayingSource();
+  const liveNowPlayingSource = new HybridNowPlayingSource({ fallback: liveManualSource });
   let liveDJContext: LiveDJContextService | null = null;
   let liveTickTimer: ReturnType<typeof setInterval> | null = null;
   try {
     liveDJContext = new LiveDJContextService({
       sessionId: `electron-session-${Date.now()}`,
       deviceId: DEFAULT_DEVICE_ID,
-      source: liveManualSource,
+      source: liveNowPlayingSource,
     });
   } catch {
     liveDJContext = null;
@@ -683,7 +687,7 @@ export function registerIpcHandlers(
   ipcMain.handle(
     IPC_CHANNELS.liveGetNow,
     async () => {
-      return liveManualSource.getCurrent();
+      return liveNowPlayingSource.getCurrent();
     },
   );
 
@@ -693,7 +697,7 @@ export function registerIpcHandlers(
       _event,
       input: Parameters<ManualNowPlayingSource['pushTrack']>[0],
     ) => {
-      const result = liveManualSource.pushTrack(input);
+      const result = liveNowPlayingSource.pushManualTrack(input);
       broadcastLiveUpdate();
       return result;
     },
@@ -705,7 +709,7 @@ export function registerIpcHandlers(
       _event,
       addMs: number,
     ) => {
-      const np = liveManualSource.tickElapsed(addMs);
+      const np = liveNowPlayingSource.tickManualElapsed(addMs);
       broadcastLiveUpdate();
       return np;
     },
@@ -898,9 +902,18 @@ export function registerIpcHandlers(
         playlists,
         savedSets,
         analyzedHours,
-        liveNowPlayingSource: liveManualSource.sourceType,
+        liveNowPlayingSource: liveNowPlayingSource.sourceType,
         lastSessionAt,
       };
     },
   );
+  return async (): Promise<void> => {
+    if (liveTickTimer) {
+      clearInterval(liveTickTimer);
+      liveTickTimer = null;
+    }
+    await liveNowPlayingSource.close();
+    await copilotDb.close();
+  };
+
 }
