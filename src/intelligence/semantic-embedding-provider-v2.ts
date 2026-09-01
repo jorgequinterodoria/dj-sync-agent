@@ -48,7 +48,7 @@ export function createHttpSemanticEmbeddingProvider(
         if (dimension > 0 && item.embedding.length !== dimension) {
           throw new Error(`Embedding dimension mismatch: expected ${dimension}, got ${item.embedding.length}.`);
         }
-        return new Float32Array(item.embedding);
+        return [...item.embedding];
       });
       return vectors;
     },

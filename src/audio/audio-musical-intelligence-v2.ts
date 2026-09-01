@@ -118,6 +118,8 @@ export function analyzePcmMusicalIntelligenceV2(input: PcmAnalysisInput): Musica
   }
 
   const level = rms(samples);
+  let peak = 0;
+  for (const sample of samples) peak = Math.max(peak, Math.abs(sample));
   let minRms = Number.POSITIVE_INFINITY;
   let maxRms = 0;
   const frameSize = Math.max(1, Math.floor(sampleRate * 0.05));
@@ -141,7 +143,7 @@ export function analyzePcmMusicalIntelligenceV2(input: PcmAnalysisInput): Musica
   const qualityFlags: string[] = [];
   if (samples.length < sampleRate) qualityFlags.push('short_window');
   if (level < 0.005) qualityFlags.push('very_low_level');
-  if (level > 0.95) qualityFlags.push('possible_clipping');
+  if (peak >= 0.98) qualityFlags.push('possible_clipping');
   if (sampleRate < 44100) qualityFlags.push('low_sample_rate');
   if (qualityFlags.length === 0) qualityFlags.push('pcm_quality_ok');
 
